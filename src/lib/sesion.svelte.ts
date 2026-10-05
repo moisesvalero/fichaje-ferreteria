@@ -57,45 +57,46 @@ class EstadoSesion {
     }
 
     const parametros = new URLSearchParams(window.location.search);
-
-    // Google ha devuelto un fallo: se dice, en vez de volver al botón como si
-    // no hubiera pasado nada.
-    if (parametros.get('acceso') === 'fallido') {
-      this.limpiarUrl();
-      this.error = 'Google no ha completado el acceso. Inténtalo otra vez.';
-      this.entrando = false;
-      this.comprobando = false;
-      return;
-    }
-
-    // Vuelta de Google: se canjea el token por una sesión. El canje va por
-    // nuestro dominio, así que la cookie que se guarda es de primera parte.
     const userId = parametros.get('userId');
     const secret = parametros.get('secret');
+    const googleFallo = parametros.get('acceso') === 'fallido';
+
+    // 1. Vuelta de Google con token: se canjea por una sesión.
+    //
+    // Esto va ANTES que el aviso de fallo a propósito. Appwrite puede devolver el
+    // token y el aviso de fallo, o pedirse la vuelta dos veces (el token es de un
+    // solo uso y el segundo intento falla). Mirar primero el aviso dejaba fuera a
+    // quien sí tenía token válido: la sesión se creaba y el usuario veía un error.
     if (userId !== null && secret !== null) {
       try {
         await account.createSession(userId, secret);
       } catch {
-        this.limpiarUrl();
-        this.error = 'No se ha podido completar el acceso. Inténtalo otra vez.';
-        this.entrando = false;
-        this.comprobando = false;
-        return;
+        // Puede estar ya usado. No se da por perdido: abajo se comprueba si hay
+        // sesión, que es lo que de verdad importa.
       }
       this.limpiarUrl();
     }
 
+    // 2. ¿Hay sesión? Si la hay, se entra aunque el aviso de fallo esté ahí.
     try {
       const cuenta = await account.get();
       this.usuario = { id: cuenta.$id, nombre: cuenta.name, email: cuenta.email };
       this.error = null;
-    } catch {
-      // Sin sesión: es lo normal la primera vez, no un error que enseñar.
-      this.usuario = null;
-    } finally {
       this.comprobando = false;
       this.entrando = false;
+      return;
+    } catch {
+      this.usuario = null;
     }
+
+    // 3. Sin sesión y con aviso de Google: se cuenta.
+    if (googleFallo) {
+      this.limpiarUrl();
+      this.error = 'Google no ha completado el acceso. Inténtalo otra vez.';
+    }
+
+    this.comprobando = false;
+    this.entrando = false;
   }
 
   entrarConGoogle(): void {
