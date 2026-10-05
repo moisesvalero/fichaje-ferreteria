@@ -152,8 +152,8 @@
       </li>
     </ul>
     <p class="caption ayuda">
-      Tus horas se guardan en tu cuenta de Appwrite, no en este móvil. Cerrar sesión no borra nada:
-      puedes volver a entrar desde otro dispositivo.
+      Tus horas se guardan en tu cuenta, no en este móvil. Cerrar sesión no borra nada: puedes
+      volver a entrar desde otro dispositivo.
     </p>
     <button
       class="boton boton--fantasma"
@@ -217,7 +217,7 @@
       </li>
       <li class="fila">
         <span class="fila__principal">Dónde viven tus datos</span>
-        <span class="fila__cifra">Tu cuenta (Appwrite)</span>
+        <span class="fila__cifra">En tu cuenta</span>
       </li>
     </ul>
   </div>

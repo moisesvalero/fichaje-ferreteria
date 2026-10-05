@@ -1,8 +1,6 @@
 <script lang="ts">
   import { configurado } from '../lib/appwrite';
-  import { accesoFallido, sesion } from '../lib/sesion.svelte';
-
-  const fallo = accesoFallido();
+  import { sesion } from '../lib/sesion.svelte';
 </script>
 
 <div class="acceso">
@@ -51,17 +49,7 @@
       {#if sesion.error}
         <p class="caption error" role="alert">{sesion.error}</p>
       {/if}
-      {#if fallo}
-        <p class="caption error" role="alert">
-          Google no ha completado el acceso. Inténtalo otra vez.
-        </p>
-      {/if}
     </div>
-
-    <p class="caption nota">
-      Con la sesión iniciada, la app necesita conexión para leer y guardar. Es la contrapartida de
-      tener los datos en la nube en lugar de solo en el móvil.
-    </p>
   {/if}
 </div>
 
@@ -103,11 +91,6 @@
   .error {
     margin: 12px 0 0;
     color: var(--rojo);
-  }
-
-  .nota {
-    margin: 0;
-    text-align: center;
   }
 
   code {

@@ -125,8 +125,3 @@ class EstadoSesion {
 }
 
 export const sesion = new EstadoSesion();
-
-/** ¿El usuario ha vuelto de Google con un fallo? */
-export function accesoFallido(): boolean {
-  return new URLSearchParams(window.location.search).get('acceso') === 'fallido';
-}
