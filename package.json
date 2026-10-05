@@ -3,14 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "PWA personal para controlar las horas de trabajo: 8 h al día y 40 h a la semana, sin cuentas ni nube.",
+  "description": "PWA para controlar tus horas de trabajo: 8 h al día y 40 a la semana. Con tu cuenta, para que perder el móvil no sea perder el historial.",
   "keywords": [
     "pwa",
     "fichaje",
     "control-horario",
     "svelte",
-    "offline",
-    "indexeddb"
+    "appwrite",
+    "cloud"
   ],
   "license": "MIT",
   "author": "Moisés Valero",

@@ -15,7 +15,10 @@ import { COLECCION_AJUSTES, COLECCION_JORNADAS, databases, idBaseDatos } from '.
 import { sanearJornada, validarAjustes } from './exportar';
 import { AJUSTES_POR_DEFECTO, type Ajustes, type Jornada } from './tipos';
 
-/** Sesenta y dos documentos por página es el máximo de Appwrite. */
+/**
+ * Documentos por página al paginar. Appwrite devuelve 25 si no se pide nada y
+ * admite hasta 100 por consulta, así que se pide el máximo para reducir viajes.
+ */
 const PAGINA = 100;
 
 export interface DocumentoJornada {
@@ -151,6 +154,11 @@ export async function actualizarJornada(
   );
 }
 
+/**
+ * Borra una jornada. No recibe el usuario a propósito: el documento lleva su
+ * propio permiso `delete("user:<id>")`, así que el servidor rechaza el borrado
+ * si quien lo intenta no es su dueño.
+ */
 export async function borrarJornada(idDocumento: string): Promise<void> {
   await databases.deleteDocument(idBaseDatos, COLECCION_JORNADAS, idDocumento);
 }

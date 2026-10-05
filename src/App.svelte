@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
 
   import { actualizacion } from './lib/actualizacion.svelte';
   import { app } from './lib/estado.svelte';
@@ -59,12 +59,17 @@
   });
 
   // Al entrar se descarga el historial; al salir se vacía todo.
+  //
+  // Este efecto depende SOLO de la sesión, y `untrack` lo deja por escrito: si
+  // leyera dentro el estado que la propia carga escribe (cargado, jornadas), se
+  // reencolaría solo y descargaría sin parar. `cargar()` no toca la sesión, así
+  // que con esto la descarga ocurre una vez por entrada.
   $effect(() => {
     if (sesion.usuario === null) {
-      app.olvidar();
+      untrack(() => app.olvidar());
       return;
     }
-    void app.cargar();
+    untrack(() => void app.cargar());
   });
 
   function abrirEditor(fecha: string): void {
@@ -126,6 +131,9 @@
     {#if app.error}
       <div class="aviso aviso--atencion aviso--descartable" role="alert">
         <span>{app.error}</span>
+        {#if sesion.usuario !== null && !app.cargado}
+          <button type="button" onclick={() => void app.cargar()}>Reintentar</button>
+        {/if}
         <button type="button" aria-label="Descartar el aviso" onclick={() => (app.error = null)}>
           Cerrar
         </button>
@@ -146,7 +154,9 @@
     {:else if sesion.usuario === null}
       <Acceso />
     {:else if !app.cargado}
-      <p class="caption">Cargando tus datos…</p>
+      {#if !app.error}
+        <p class="caption">Cargando tus datos…</p>
+      {/if}
     {:else if vista === 'hoy'}
       <Hoy {abrirEditor} />
     {:else if vista === 'semana'}

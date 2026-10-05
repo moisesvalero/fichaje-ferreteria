@@ -83,7 +83,8 @@ src/
 │   ├── fechas.ts           Aritmética de fechas locales, inmune al cambio de hora
 │   ├── parseo.ts           Validación de fechas y horas: o son correctas, o null
 │   ├── formato.ts          Cifras y fechas en español, con cifras tabulares
-│   ├── db.ts               Persistencia en IndexedDB (Dexie), saneado y transacciones
+│   ├── appwrite.ts         Cliente de Appwrite, configuración por entorno
+│   ├── nube.ts             Única puerta a la nube: mapea y sanea lo que entra
 │   ├── estado.svelte.ts    Estado global, cola de escritura y reloj en vivo
 │   ├── exportar.ts         CSV, resumen para PDF, copia JSON y validación profunda
 │   └── estados.ts          Copy de interfaz para los estados
@@ -103,7 +104,7 @@ src/
 | **Appwrite (UE)**                  | Base de datos, cuentas y login con Google sin montar un backend. Aislamiento por documento verificado con dos usuarios reales   |
 | **vite-plugin-pwa**                | Precache completo: la app abre sin conexión, fuentes incluidas                                                                  |
 | **jsPDF con importación dinámica** | Arrastra `html2canvas` y `dompurify` (200 kB): no deben cargarse para ver un reloj                                              |
-| **Vitest + fake-indexeddb**        | Probar el motor puro está bien, pero los bugs de verdad estaban en la cola de escritura y en la validación del JSON             |
+| **Vitest con la nube simulada**    | Probar el motor puro está bien, pero los bugs de verdad estaban en la cola de escritura y en la validación del JSON             |
 
 ## Calidad
 

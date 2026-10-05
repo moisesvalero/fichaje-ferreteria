@@ -35,14 +35,11 @@ export const account = new Account(client);
 export const databases = new Databases(client);
 export const idBaseDatos = DATABASE;
 
-/** Error de red, que es el único que merece encolarse para reintentar. */
-export function esFalloDeRed(error: unknown): boolean {
+/**
+ * La sesión ha caducado o se ha revocado. No es un fallo de red: reintentar no
+ * sirve de nada, hay que volver a entrar.
+ */
+export function esSesionCaducada(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) return false;
-  const posible = error as { code?: number; type?: string; message?: string };
-  if (posible.code === 0) return true;
-  if (typeof posible.type === 'string' && posible.type.includes('network')) return true;
-  if (typeof posible.message === 'string' && /fetch|network|offline/i.test(posible.message)) {
-    return true;
-  }
-  return !navigator.onLine;
+  return (error as { code?: number }).code === 401;
 }

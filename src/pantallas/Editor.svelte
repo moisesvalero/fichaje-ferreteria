@@ -135,14 +135,14 @@
     filas = filas.filter((f) => f.id !== id);
   }
 
+  // Solo se cierra si la escritura ha ido bien: cerrar tras un fallo haría
+  // perder lo escrito sin poder reintentarlo.
   async function guardar(): Promise<void> {
-    await app.guardar(borrador);
-    oncerrar();
+    if (await app.guardar(borrador)) oncerrar();
   }
 
   async function eliminarDia(): Promise<void> {
-    await app.eliminar(fecha);
-    oncerrar();
+    if (await app.eliminar(fecha)) oncerrar();
   }
 
   const FOCALIZABLES =

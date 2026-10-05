@@ -16,11 +16,12 @@ const nube = vi.hoisted(() => ({
   ids: new Map<string, string>(),
   ajustes: null as unknown,
   fallar: false,
+  codigo: 0,
 }));
 
 vi.mock('./nube', () => ({
   descargarJornadas: vi.fn(async () => {
-    if (nube.fallar) throw new Error('sin red');
+    if (nube.fallar) throw Object.assign(new Error('sin red'), { code: nube.codigo });
     return {
       jornadas: [...nube.jornadas.values()],
       descartados: 0,
@@ -28,24 +29,24 @@ vi.mock('./nube', () => ({
     };
   }),
   descargarAjustes: vi.fn(async () => {
-    if (nube.fallar) throw new Error('sin red');
+    if (nube.fallar) throw Object.assign(new Error('sin red'), { code: nube.codigo });
     return nube.ajustes === null
       ? null
       : { ajustes: nube.ajustes, objetivosSemanas: {}, idDocumento: 'ajustes-1' };
   }),
   crearJornada: vi.fn(async (jornada: Jornada) => {
-    if (nube.fallar) throw new Error('sin red');
+    if (nube.fallar) throw Object.assign(new Error('sin red'), { code: nube.codigo });
     const id = `id-${jornada.fecha}`;
     nube.jornadas.set(jornada.fecha, jornada);
     nube.ids.set(jornada.fecha, id);
     return id;
   }),
   actualizarJornada: vi.fn(async (_id: string, jornada: Jornada) => {
-    if (nube.fallar) throw new Error('sin red');
+    if (nube.fallar) throw Object.assign(new Error('sin red'), { code: nube.codigo });
     nube.jornadas.set(jornada.fecha, jornada);
   }),
   borrarJornada: vi.fn(async (id: string) => {
-    if (nube.fallar) throw new Error('sin red');
+    if (nube.fallar) throw Object.assign(new Error('sin red'), { code: nube.codigo });
     for (const [fecha, guardado] of nube.ids) {
       if (guardado === id) {
         nube.ids.delete(fecha);
@@ -54,17 +55,22 @@ vi.mock('./nube', () => ({
     }
   }),
   guardarAjustes: vi.fn(async (ajustes: Ajustes) => {
-    if (nube.fallar) throw new Error('sin red');
+    if (nube.fallar) throw Object.assign(new Error('sin red'), { code: nube.codigo });
     nube.ajustes = ajustes;
     return 'ajustes-1';
   }),
 }));
 
 vi.mock('./sesion.svelte', () => ({
-  sesion: { usuario: { id: 'usuario-1', nombre: 'Prueba', email: 'prueba@ejemplo.com' } },
+  sesion: {
+    usuario: { id: 'usuario-1', nombre: 'Prueba', email: 'prueba@ejemplo.com' },
+    error: null as string | null,
+    salir: vi.fn(async () => {}),
+  },
 }));
 
 import { app } from './estado.svelte';
+import { sesion } from './sesion.svelte';
 import { lunesDe, sumarDias } from './fechas';
 import { instanteLocal } from './parseo';
 
@@ -106,8 +112,24 @@ describe('carga desde la nube', () => {
     await app.cargar();
 
     expect(app.jornadas).toHaveLength(0);
-    expect(app.cargado).toBe(true);
+    // No se da por cargada: así la app no muestra un historial vacío que
+    // parecería "no tengo nada fichado" cuando en realidad no ha podido mirar.
+    expect(app.cargado).toBe(false);
     expect(app.error).toMatch(/no se ha podido descargar/i);
+  });
+
+  it('si la sesión ha caducado, pide volver a entrar en vez de hablar de conexión', async () => {
+    nube.fallar = true;
+    nube.codigo = 401;
+
+    await app.cargar();
+
+    // Ni se habla de conexión ni se pinta la app vacía: se cierra la sesión y se
+    // pide volver a entrar.
+    expect(app.error).toBeNull();
+    expect(app.cargado).toBe(false);
+    expect(sesion.salir).toHaveBeenCalled();
+    expect(sesion.error).toMatch(/caducado/i);
   });
 
   it('crea unos ajustes por defecto si el usuario todavía no tiene', async () => {

@@ -87,7 +87,7 @@ const atributo = {
 const COLECCIONES = [
   {
     id: 'fichaje_jornadas',
-    nombre: 'Fichaje · Jornadas',
+    nombre: 'Jornada · Registros',
     atributos: [
       atributo.texto('usuario', { size: 36, required: true }),
       atributo.texto('fecha', { size: 10, required: true }),
@@ -111,7 +111,7 @@ const COLECCIONES = [
   },
   {
     id: 'fichaje_ajustes',
-    nombre: 'Fichaje · Ajustes',
+    nombre: 'Jornada · Ajustes',
     atributos: [
       atributo.texto('usuario', { size: 36, required: true }),
       atributo.flotante('horasDia', { required: true, min: 1, max: 24 }),
@@ -157,7 +157,8 @@ async function asegurarColeccion(definicion) {
   } else {
     const actuales = JSON.stringify(coleccion.$permissions ?? []);
     const esperados = JSON.stringify(PERMISOS_COLECCION);
-    if (actuales !== esperados) {
+    const nombreDistinto = coleccion.name !== definicion.nombre;
+    if (actuales !== esperados || nombreDistinto) {
       const corregida = await api('PUT', `/databases/${DATABASE}/collections/${definicion.id}`, {
         name: definicion.nombre,
         permissions: PERMISOS_COLECCION,
@@ -166,11 +167,12 @@ async function asegurarColeccion(definicion) {
       });
       console.log(
         corregida.error
-          ? `    FALLO al corregir permisos: ${corregida.error}`
-          : `    permisos corregidos: ${actuales} → ${esperados}`,
+          ? `    FALLO al corregir: ${corregida.error}`
+          : `    corregida: nombre "${coleccion.name}" → "${definicion.nombre}"` +
+              (actuales === esperados ? '' : `, permisos ${actuales} → ${esperados}`),
       );
     } else {
-      console.log('    la colección ya existía y sus permisos son correctos');
+      console.log('    la colección ya existía y está correcta');
     }
   }
 

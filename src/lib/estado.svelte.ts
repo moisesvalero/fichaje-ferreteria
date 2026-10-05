@@ -45,6 +45,7 @@ import {
   type ResumenSemana,
   type Tramo,
 } from './tipos';
+import { esSesionCaducada } from './appwrite';
 
 const TICKS_PARA_REPOSO = 30;
 const CLAVE_ULTIMA_DESCARGA = 'fichaje.ultimaDescarga';
@@ -53,9 +54,18 @@ function nuevoId(): string {
   return crypto.randomUUID();
 }
 
-function leerUltimaDescarga(): string | null {
+/**
+ * La marca de la última copia es por usuario: en un dispositivo compartido, una
+ * clave única haría que el siguiente heredara la fecha del anterior y el
+ * recordatorio de copia mentiría.
+ */
+function claveDeDescarga(usuarioId: string | null): string {
+  return usuarioId === null ? CLAVE_ULTIMA_DESCARGA : `${CLAVE_ULTIMA_DESCARGA}.${usuarioId}`;
+}
+
+function leerUltimaDescarga(usuarioId: string | null): string | null {
   try {
-    return localStorage.getItem(CLAVE_ULTIMA_DESCARGA);
+    return localStorage.getItem(claveDeDescarga(usuarioId));
   } catch {
     return null;
   }
@@ -69,7 +79,7 @@ class EstadoApp {
   /** `true` cuando los datos del usuario ya están descargados. */
   cargado = $state(false);
   /** ISO de la última descarga del historial, o null. */
-  ultimaDescarga = $state<string | null>(leerUltimaDescarga());
+  ultimaDescarga = $state<string | null>(leerUltimaDescarga(null));
   /** Error visible para el usuario, o null. */
   error = $state<string | null>(null);
   /** Aviso no bloqueante, por ejemplo del resultado de una importación. */
@@ -151,11 +161,33 @@ class EstadoApp {
 
     this.cargado = false;
     this.error = null;
+    this.ultimaDescarga = leerUltimaDescarga(usuario.id);
+
+    // La descarga manda: si falla, la app no se da por cargada, porque pintar un
+    // historial vacío parecería "no tengo nada fichado" en vez de "no he podido
+    // preguntar". Y si el fallo es de sesión, no se habla de conexión.
+    let descartados = 0;
     try {
       const descarga = await descargarJornadas(usuario.id);
       this.jornadas = descarga.jornadas;
       this.idsPorFecha = descarga.idsPorFecha;
+      descartados = descarga.descartados;
+      this.cargado = true;
+    } catch (fallo) {
+      if (esSesionCaducada(fallo)) {
+        await sesion.salir();
+        sesion.error = 'Tu sesión ha caducado. Vuelve a entrar.';
+        return;
+      }
+      this.error = navigator.onLine
+        ? 'No se ha podido descargar tu historial. Inténtalo otra vez.'
+        : 'Sin conexión: no se ha podido descargar tu historial.';
+      return;
+    }
 
+    // Desde aquí el historial ya está en pantalla: un fallo en los ajustes no
+    // debe dejarla en blanco.
+    try {
       const nube = await descargarAjustes(usuario.id);
       if (nube === null) {
         this.ajustes = { ...AJUSTES_POR_DEFECTO };
@@ -166,18 +198,16 @@ class EstadoApp {
         this.idAjustes = nube.idDocumento;
       }
 
-      if (descarga.descartados > 0) {
-        this.aviso = `Se han descartado ${descarga.descartados} ${
-          descarga.descartados === 1 ? 'registro dañado' : 'registros dañados'
-        } al descargar.`;
-      }
-
       await this.congelarSemanasCerradas();
       this.ahora = Date.now();
     } catch {
-      this.error = 'No se ha podido descargar tu historial. Comprueba la conexión.';
-    } finally {
-      this.cargado = true;
+      this.error = 'Se ha descargado tu historial, pero no tus ajustes.';
+    }
+
+    if (descartados > 0) {
+      this.aviso = `Se han descartado ${descartados} ${
+        descartados === 1 ? 'registro dañado' : 'registros dañados'
+      } al descargar.`;
     }
   }
 
@@ -191,6 +221,7 @@ class EstadoApp {
     this.cargado = false;
     this.error = null;
     this.aviso = null;
+    this.ultimaDescarga = null;
   }
 
   /**
@@ -269,8 +300,21 @@ class EstadoApp {
     );
     if (Object.keys(pendientes).length === 0) return;
 
-    this.objetivosSemanas = { ...this.objetivosSemanas, ...pendientes };
-    await this.persistirAjustes();
+    // Pasa por la cola (como el resto de escrituras) y revierte en memoria si la
+    // nube no lo acepta: si no, el saldo se calcularía con objetivos congelados
+    // que el servidor nunca recibió.
+    await this.encolar(async () => {
+      const anteriores = this.objetivosSemanas;
+      const idAnterior = this.idAjustes;
+      this.objetivosSemanas = { ...this.objetivosSemanas, ...pendientes };
+      try {
+        await this.persistirAjustes();
+      } catch (fallo) {
+        this.objetivosSemanas = anteriores;
+        this.idAjustes = idAnterior;
+        throw fallo;
+      }
+    });
   }
 
   /** Abre un tramo nuevo (fichar entrada o reanudar tras una pausa). */
@@ -362,8 +406,16 @@ class EstadoApp {
         escritas += 1;
       }
       if (ajustes !== null) {
+        const anteriores = this.ajustes;
+        const idAnterior = this.idAjustes;
         this.ajustes = ajustes;
-        await this.persistirAjustes();
+        try {
+          await this.persistirAjustes();
+        } catch (fallo) {
+          this.ajustes = anteriores;
+          this.idAjustes = idAnterior;
+          throw fallo;
+        }
       }
     }).then(() => escritas);
   }
@@ -373,7 +425,7 @@ class EstadoApp {
     const instante = new Date().toISOString();
     this.ultimaDescarga = instante;
     try {
-      localStorage.setItem(CLAVE_ULTIMA_DESCARGA, instante);
+      localStorage.setItem(claveDeDescarga(sesion.usuario?.id ?? null), instante);
     } catch {
       // Sin localStorage la marca no persiste; no es grave.
     }

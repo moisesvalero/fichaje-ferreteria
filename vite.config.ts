@@ -21,7 +21,8 @@ export default defineConfig({
       manifest: {
         name: 'Jornada',
         short_name: 'Jornada',
-        description: 'Control personal de tus horas de trabajo. Sin cuentas, sin nube.',
+        description:
+          'Controla tus 8 horas al día y 40 a la semana, ni más ni menos. Con tu cuenta, para que perder el móvil no sea perder el historial.',
         lang: 'es',
         dir: 'ltr',
         start_url: '/',
