@@ -7,7 +7,7 @@ export default defineConfig({
     svelte(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icono.svg'],
+      includeAssets: ['icono.svg', 'icono-192.png', 'icono-512.png'],
       manifest: {
         name: 'Fichaje Ferretería',
         short_name: 'Fichaje',
@@ -22,10 +22,24 @@ export default defineConfig({
         theme_color: '#2563EB',
         icons: [
           {
-            src: 'icono.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
+            src: 'icono-192.png',
+            sizes: '192x192',
+            type: 'image/png',
             purpose: 'any',
+          },
+          {
+            src: 'icono-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            // iOS y Android recortan el icono; el fondo va a sangre para que
+            // no quede un borde transparente ni un cuadrado negro.
+            src: 'icono-maskable-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
           },
         ],
       },
