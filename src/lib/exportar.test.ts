@@ -303,7 +303,12 @@ describe('leerCopia: validación profunda', () => {
           {
             fecha: '2026-09-30',
             tipo: 'festivo',
-            tramos: [{ inicio: 1, fin: 2 }],
+            tramos: [
+              {
+                inicio: instanteLocal('2026-09-30', '09:00')!,
+                fin: instanteLocal('2026-09-30', '10:00')!,
+              },
+            ],
           },
         ],
       }),
@@ -342,6 +347,121 @@ describe('leerCopia: validación profunda', () => {
     expect(lectura.ok).toBe(true);
     if (!lectura.ok) return;
     expect(lectura.copia.jornadas).toHaveLength(0);
+  });
+
+  it('renombra los ids de tramo repetidos, que romperían el render', () => {
+    // Regresión: Svelte lanza con claves duplicadas en una lista, y eso dejaba
+    // la pantalla de Hoy sin renderizar y sin forma de arreglarlo desde dentro.
+    const a = instanteLocal('2026-09-30', '09:00')!;
+    const lectura = leerCopia(
+      JSON.stringify({
+        jornadas: [
+          {
+            fecha: '2026-09-30',
+            tipo: 'laborable',
+            tramos: [
+              { id: 'repetido', inicio: a, fin: a + 3_600_000 },
+              { id: 'repetido', inicio: a + 7_200_000, fin: a + 10_800_000 },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(lectura.ok).toBe(true);
+    if (!lectura.ok) return;
+
+    const ids = lectura.copia.jornadas[0]!.tramos.map((tramo) => tramo.id);
+    expect(ids).toHaveLength(2);
+    expect(new Set(ids).size).toBe(2);
+    expect(lectura.copia.idsRenombrados).toBe(1);
+    expect(lectura.copia.avisos.join(' ')).toMatch(/identificador repetido/i);
+  });
+
+  it('descarta los instantes que no caen en el día de su jornada', () => {
+    // Regresión: {inicio: 0, fin: 1760000000000} sumaba 29 millones de minutos.
+    const inicio = instanteLocal('2026-09-30', '09:00')!;
+    const lectura = leerCopia(
+      JSON.stringify({
+        jornadas: [
+          {
+            fecha: '2026-09-30',
+            tipo: 'laborable',
+            tramos: [
+              // Duración absurda: lo descarta la cota de 24 h.
+              { inicio: 0, fin: 1_760_000_000_000 },
+              // Duración creíble pero en 1970: solo lo descarta la cota del día.
+              { inicio: 0, fin: 3_600_000 },
+              // Este es el único válido.
+              { inicio, fin: inicio + 3_600_000 },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(lectura.ok).toBe(true);
+    if (!lectura.ok) return;
+
+    expect(lectura.copia.jornadas[0]!.tramos).toHaveLength(1);
+    expect(lectura.copia.avisos.join(' ')).toMatch(/tramo(s)? descartado/i);
+  });
+
+  it('descarta un tramo que dura más de 24 horas', () => {
+    const inicio = instanteLocal('2026-09-30', '09:00')!;
+    const lectura = leerCopia(
+      JSON.stringify({
+        jornadas: [
+          {
+            fecha: '2026-09-30',
+            tipo: 'laborable',
+            tramos: [{ inicio, fin: inicio + 25 * 3_600_000 }],
+          },
+        ],
+      }),
+    );
+    expect(lectura.ok).toBe(true);
+    if (!lectura.ok) return;
+    expect(lectura.copia.jornadas[0]!.tramos).toHaveLength(0);
+  });
+
+  it('acepta un turno que cruza medianoche', () => {
+    const lectura = leerCopia(
+      JSON.stringify({
+        jornadas: [
+          {
+            fecha: '2026-09-30',
+            tipo: 'laborable',
+            tramos: [
+              {
+                inicio: instanteLocal('2026-09-30', '22:00')!,
+                fin: instanteLocal('2026-10-01', '01:00')!,
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(lectura.ok).toBe(true);
+    if (!lectura.ok) return;
+    expect(lectura.copia.jornadas[0]!.tramos).toHaveLength(1);
+  });
+
+  it('recorta las notas desmedidas', () => {
+    const inicio = instanteLocal('2026-09-30', '09:00')!;
+    const lectura = leerCopia(
+      JSON.stringify({
+        jornadas: [
+          {
+            fecha: '2026-09-30',
+            tipo: 'laborable',
+            nota: 'x'.repeat(5000),
+            tramos: [{ inicio, fin: inicio + 3_600_000 }],
+          },
+        ],
+      }),
+    );
+    expect(lectura.ok).toBe(true);
+    if (!lectura.ok) return;
+    expect(lectura.copia.jornadas[0]!.nota).toHaveLength(500);
   });
 });
 

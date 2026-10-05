@@ -11,8 +11,8 @@
  * Los minutos siempre salen de `calculo.ts`. Aquí no se recalcula nada.
  */
 
-import { minutosJornada, resumenSemana } from './calculo';
-import { aFecha, lunesDe, sumarDias } from './fechas';
+import { minutosJornada, minutosTramo, resumenSemana } from './calculo';
+import { aFecha, inicioDelDiaLocal, lunesDe, sumarDias } from './fechas';
 import { formatearHora } from './formato';
 import { partesDeFecha } from './parseo';
 import type { Ajustes, Jornada, Tramo, TipoDia } from './tipos';
@@ -55,8 +55,7 @@ function campoCSV(valor: string, { textoLibre = false } = {}): string {
  */
 function minutosDeTramoExport(tramo: Tramo, esHoy: boolean, ahora: number): number {
   if (tramo.fin === null && !esHoy) return 0;
-  const fin = tramo.fin ?? ahora;
-  return Math.max(0, Math.round((Math.max(tramo.inicio, fin) - tramo.inicio) / 60_000));
+  return minutosTramo(tramo, ahora);
 }
 
 /**
@@ -218,6 +217,8 @@ export interface CopiaLeida {
   descartadas: number;
   /** Jornadas repetidas por fecha; se conserva la última. */
   duplicadas: number;
+  /** Tramos cuyo identificador venía repetido y se ha renombrado. */
+  idsRenombrados: number;
   /** Cosas que el usuario debería saber, sin llegar a impedir la restauración. */
   avisos: string[];
 }
@@ -226,31 +227,68 @@ function esNumeroFinito(valor: unknown): valor is number {
   return typeof valor === 'number' && Number.isFinite(valor);
 }
 
-/** Un tramo es válido si sus instantes son números y el fin no precede al inicio. */
-function normalizarTramo(valor: unknown, fecha: string, indice: number): Tramo | null {
-  if (typeof valor !== 'object' || valor === null) return null;
+/** Un día no puede tener más de 24 horas de trabajo, por definición. */
+const MS_POR_DIA = 24 * 60 * 60 * 1000;
+
+/**
+ * Sanea un tramo.
+ *
+ * Además de comprobar que los instantes son números, exige que **caigan dentro
+ * del día de su jornada** y que no duren más de 24 horas. Sin esa cota, un
+ * `inicio: 0` de 1970 entraba sin una queja y contaminaba el saldo para siempre.
+ *
+ * Los ids repetidos se renombran: Svelte lanza al renderizar una lista con
+ * claves duplicadas, y eso dejaría la app sin arrancar y sin forma de arreglarlo
+ * desde dentro.
+ */
+function sanearTramo(
+  valor: unknown,
+  fecha: string,
+  indice: number,
+  idsVistos: Set<string>,
+): { tramo: Tramo | null; idRenombrado: boolean } {
+  if (typeof valor !== 'object' || valor === null) return { tramo: null, idRenombrado: false };
   const posible = valor as Partial<Tramo>;
 
-  if (!esNumeroFinito(posible.inicio)) return null;
-  if (posible.fin !== null && !esNumeroFinito(posible.fin)) return null;
-  if (posible.fin !== null && posible.fin < posible.inicio) return null;
+  if (!esNumeroFinito(posible.inicio)) return { tramo: null, idRenombrado: false };
+  if (posible.fin !== null && !esNumeroFinito(posible.fin)) {
+    return { tramo: null, idRenombrado: false };
+  }
 
-  const id =
+  // El tramo tiene que empezar dentro del día al que pertenece la jornada.
+  const comienzoDelDia = inicioDelDiaLocal(fecha);
+  if (posible.inicio < comienzoDelDia || posible.inicio >= comienzoDelDia + MS_POR_DIA) {
+    return { tramo: null, idRenombrado: false };
+  }
+
+  if (posible.fin !== null) {
+    if (posible.fin < posible.inicio) return { tramo: null, idRenombrado: false };
+    if (posible.fin - posible.inicio > MS_POR_DIA) return { tramo: null, idRenombrado: false };
+  }
+
+  const idBruto =
     typeof posible.id === 'string' && posible.id !== '' ? posible.id : `${fecha}-${indice}`;
+  const idRenombrado = idsVistos.has(idBruto);
+  const id = idRenombrado ? `${fecha}-${indice}` : idBruto;
+  idsVistos.add(id);
 
-  return { id, inicio: posible.inicio, fin: posible.fin ?? null };
+  return { tramo: { id, inicio: posible.inicio, fin: posible.fin ?? null }, idRenombrado };
+}
+
+export interface JornadaSanedada {
+  jornada: Jornada;
+  tramosDescartados: number;
+  idsRenombrados: number;
 }
 
 /**
  * Sanea una jornada venida de fuera (copia de seguridad o base de datos).
- * Devuelve null si no hay nada aprovechable, y cuenta los tramos descartados.
+ * Devuelve null si no hay nada aprovechable.
  *
  * Es la única puerta de validación de jornadas: se usa al importar y también al
  * cargar, para que un registro corrupto de una versión anterior no rompa la app.
  */
-export function sanearJornada(
-  valor: unknown,
-): { jornada: Jornada; tramosDescartados: number } | null {
+export function sanearJornada(valor: unknown): JornadaSanedada | null {
   if (typeof valor !== 'object' || valor === null) return null;
   const posible = valor as Partial<Jornada>;
 
@@ -258,19 +296,30 @@ export function sanearJornada(
   if (typeof posible.fecha !== 'string' || partesDeFecha(posible.fecha) === null) return null;
 
   const bruto = Array.isArray(posible.tramos) ? posible.tramos : [];
-  const normalizados = bruto
-    .map((tramo, i) => normalizarTramo(tramo, posible.fecha!, i))
-    .filter((t): t is Tramo => t !== null);
+  const idsVistos = new Set<string>();
+  const tramos: Tramo[] = [];
+  let idsRenombrados = 0;
+
+  bruto.forEach((tramo, i) => {
+    const saneado = sanearTramo(tramo, posible.fecha!, i, idsVistos);
+    if (saneado.tramo === null) return;
+    if (saneado.idRenombrado) idsRenombrados += 1;
+    tramos.push(saneado.tramo);
+  });
 
   return {
     jornada: {
       fecha: posible.fecha,
       tipo: esTipoValido(posible.tipo) ? posible.tipo : 'laborable',
-      tramos: normalizados.sort((a, b) => a.inicio - b.inicio),
-      nota: typeof posible.nota === 'string' && posible.nota !== '' ? posible.nota : undefined,
+      tramos: tramos.sort((a, b) => a.inicio - b.inicio),
+      nota:
+        typeof posible.nota === 'string' && posible.nota !== ''
+          ? posible.nota.slice(0, 500)
+          : undefined,
       corregido: posible.corregido === true ? true : undefined,
     },
-    tramosDescartados: bruto.length - normalizados.length,
+    tramosDescartados: bruto.length - tramos.length,
+    idsRenombrados,
   };
 }
 
@@ -331,6 +380,7 @@ export function leerCopia(texto: string): LecturaCopia {
   let descartadas = 0;
   let duplicadas = 0;
   let tramosDescartados = 0;
+  let idsRenombrados = 0;
 
   for (const item of bruto.jornadas) {
     const normalizada = sanearJornada(item);
@@ -339,6 +389,7 @@ export function leerCopia(texto: string): LecturaCopia {
       continue;
     }
     tramosDescartados += normalizada.tramosDescartados;
+    idsRenombrados += normalizada.idsRenombrados;
     if (porFecha.has(normalizada.jornada.fecha)) duplicadas += 1;
     porFecha.set(normalizada.jornada.fecha, normalizada.jornada);
   }
@@ -366,13 +417,21 @@ export function leerCopia(texto: string): LecturaCopia {
       `${duplicadas} ${duplicadas === 1 ? 'jornada repetida' : 'jornadas repetidas'}: se ha conservado la última.`,
     );
   }
+  if (idsRenombrados > 0) {
+    avisos.push(
+      `${idsRenombrados} ${idsRenombrados === 1 ? 'tramo tenía el identificador repetido' : 'tramos tenían el identificador repetido'} y se ha renombrado.`,
+    );
+  }
 
   const jornadas = [...porFecha.values()].sort((a, b) => a.fecha.localeCompare(b.fecha));
   if (jornadas.length === 0 && bruto.jornadas.length > 0) {
     return { ok: false, error: 'Ninguna jornada de la copia tiene una fecha válida.' };
   }
 
-  return { ok: true, copia: { jornadas, ajustes, descartadas, duplicadas, avisos } };
+  return {
+    ok: true,
+    copia: { jornadas, ajustes, descartadas, duplicadas, idsRenombrados, avisos },
+  };
 }
 
 export function generarCopia(jornadas: Jornada[], ajustes: Ajustes, ahora: number): string {

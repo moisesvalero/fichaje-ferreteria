@@ -99,7 +99,7 @@
 <p class="caption nota">
   Objetivo ajustado a {resumen.diasComputables}
   {resumen.diasComputables === 1 ? 'día laborable' : 'días laborables'}
-  {#if resumen.diasComputables !== 5}
+  {#if resumen.diasComputables !== app.ajustes.diasLaborables.length}
     (el resto son festivos, vacaciones o descanso)
   {/if}
 </p>

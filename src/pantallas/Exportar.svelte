@@ -190,7 +190,12 @@
     }
 
     // Se aplica en una transacción: si algo falla, no queda media copia dentro.
-    await app.importar(lectura.copia.jornadas, lectura.copia.ajustes);
+    const restaurada = await app.importar(lectura.copia.jornadas, lectura.copia.ajustes);
+    if (!restaurada) {
+      // El detalle del fallo ya lo muestra el banner de error del shell.
+      aviso = null;
+      return;
+    }
 
     const cuantas = lectura.copia.jornadas.length;
     const resumenImportacion = `Copia restaurada: ${cuantas} ${

@@ -9,6 +9,7 @@
 
 import Dexie, { type Table } from 'dexie';
 
+import type { ObjetivosCongelados } from './calculo';
 import { sanearJornada, validarAjustes } from './exportar';
 import { AJUSTES_POR_DEFECTO, type Ajustes, type Jornada } from './tipos';
 
@@ -25,6 +26,7 @@ export interface Meta {
 
 export const CLAVE_AJUSTES = 1;
 export const META_ULTIMA_COPIA = 'ultimaCopia';
+export const META_OBJETIVOS = 'objetivosSemanas';
 
 class BaseFichaje extends Dexie {
   jornadas!: Table<Jornada, string>;
@@ -119,6 +121,33 @@ export async function importarCopia(jornadas: Jornada[], ajustes: Ajustes | null
       await db.ajustes.put({ id: CLAVE_AJUSTES, ...ajustes });
     }
   });
+}
+
+/**
+ * Lee los objetivos congelados de las semanas ya cerradas.
+ * Si el registro está corrupto se devuelve un mapa vacío: se volverán a congelar.
+ */
+export async function leerObjetivosSemanas(): Promise<ObjetivosCongelados> {
+  try {
+    const registro = await db.meta.get(META_OBJETIVOS);
+    if (registro === undefined) return {};
+    const datos: unknown = JSON.parse(registro.valor);
+    if (typeof datos !== 'object' || datos === null) return {};
+
+    const limpio: ObjetivosCongelados = {};
+    for (const [lunes, minutos] of Object.entries(datos as Record<string, unknown>)) {
+      if (typeof minutos === 'number' && Number.isFinite(minutos) && minutos >= 0) {
+        limpio[lunes] = minutos;
+      }
+    }
+    return limpio;
+  } catch {
+    return {};
+  }
+}
+
+export async function guardarObjetivosSemanas(objetivos: ObjetivosCongelados): Promise<void> {
+  await db.meta.put({ clave: META_OBJETIVOS, valor: JSON.stringify(objetivos) });
 }
 
 export async function marcarCopiaHecha(instante: string): Promise<void> {

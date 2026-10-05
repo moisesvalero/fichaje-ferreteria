@@ -26,6 +26,16 @@ export function aMediodiaLocal(fecha: string): Date {
   return new Date(partes.anio, partes.mes - 1, partes.dia, 12, 0, 0, 0);
 }
 
+/**
+ * Instante del comienzo del día local (00:00).
+ * Sirve para comprobar que los tramos de una jornada caen dentro de su día.
+ */
+export function inicioDelDiaLocal(fecha: string): number {
+  const partes = partesDeFecha(fecha);
+  if (partes === null) throw new Error(`Fecha inválida: ${fecha}`);
+  return new Date(partes.anio, partes.mes - 1, partes.dia, 0, 0, 0, 0).getTime();
+}
+
 /** Suma (o resta) días a una fecha. */
 export function sumarDias(fecha: string, dias: number): string {
   const d = aMediodiaLocal(fecha);

@@ -16,8 +16,10 @@ import {
   resumenDia,
   resumenSemana,
   saldoExtras,
+  semanasSinCongelar,
   situacionActual,
   tramosOrdenados,
+  type ObjetivosCongelados,
   type ResumenDia,
   type SaldoExtras,
   type Situacion,
@@ -27,7 +29,9 @@ import {
   cargarTodo,
   guardarAjustes,
   guardarJornada,
+  guardarObjetivosSemanas,
   importarCopia,
+  leerObjetivosSemanas,
   pedirAlmacenamientoPersistente,
 } from './db';
 import { aFecha } from './fechas';
@@ -62,6 +66,8 @@ class EstadoApp {
   error = $state<string | null>(null);
   /** Aviso no bloqueante, por ejemplo del resultado de una importación. */
   aviso = $state<string | null>(null);
+  /** Objetivo congelado de cada semana cerrada, por su lunes. */
+  private objetivosSemanas = $state<ObjetivosCongelados>({});
 
   private temporizador: ReturnType<typeof setInterval> | null = null;
   private ticks = 0;
@@ -91,7 +97,9 @@ class EstadoApp {
   );
 
   /** Saldo de extras: firme (semanas cerradas) y provisional (semana en curso). */
-  saldo = $derived<SaldoExtras>(saldoExtras(this.jornadas, this.ajustes, this.hoy, this.ahora));
+  saldo = $derived<SaldoExtras>(
+    saldoExtras(this.jornadas, this.ajustes, this.hoy, this.ahora, this.objetivosSemanas),
+  );
 
   /** Tramos abiertos de días anteriores, pendientes de corregir. */
   pendientes = $derived(olvidos(this.jornadas, this.hoy));
@@ -106,6 +114,7 @@ class EstadoApp {
       this.jornadas = jornadas;
       this.ajustes = ajustes;
       this.ultimaCopia = ultimaCopia;
+      await this.congelarSemanasCerradas();
       if (descartadas > 0) {
         this.aviso = `Se han descartado ${descartadas} ${
           descartadas === 1 ? 'registro dañado' : 'registros dañados'
@@ -147,22 +156,51 @@ class EstadoApp {
    * seguiría corriendo. Cada acción es además idempotente, así que una doble
    * pulsación del mismo botón no duplica nada.
    */
-  private encolar(accion: () => Promise<void>): Promise<void> {
+  private encolar(accion: () => Promise<void>): Promise<boolean> {
     this.enCola += 1;
 
     const tarea = this.cola.then(async () => {
       try {
         await accion();
         this.error = null;
+        return true;
       } catch {
         this.error = 'No se ha podido guardar el cambio en este dispositivo.';
+        return false;
       } finally {
         this.enCola -= 1;
       }
     });
 
-    this.cola = tarea.catch(() => undefined);
+    this.cola = tarea.then(
+      () => undefined,
+      () => undefined,
+    );
     return tarea;
+  }
+
+  /**
+   * Fija el objetivo de las semanas ya cerradas que aún no lo tuvieran.
+   * A partir de ahí, cambiar el límite semanal afecta a las semanas siguientes,
+   * no al saldo que ya está apuntado.
+   */
+  private async congelarSemanasCerradas(): Promise<void> {
+    const guardados = await leerObjetivosSemanas();
+    const pendientes = semanasSinCongelar(
+      this.jornadas,
+      this.ajustes,
+      this.hoy,
+      this.ahora,
+      guardados,
+    );
+
+    if (Object.keys(pendientes).length > 0) {
+      const juntos = { ...guardados, ...pendientes };
+      await guardarObjetivosSemanas(juntos);
+      this.objetivosSemanas = juntos;
+      return;
+    }
+    this.objetivosSemanas = guardados;
   }
 
   /** Aplica una jornada en memoria, sustituyendo la del mismo día. */
@@ -172,7 +210,7 @@ class EstadoApp {
   }
 
   /** Abre un tramo nuevo (fichar entrada o reanudar tras una pausa). */
-  ficharEntrada(): Promise<void> {
+  ficharEntrada(): Promise<boolean> {
     return this.encolar(async () => {
       const instante = Date.now();
       const jornada: Jornada = this.jornadaHoy ?? {
@@ -197,7 +235,7 @@ class EstadoApp {
    * la diferencia es solo lo que el usuario piensa hacer después, y la app no
    * necesita adivinarlo para medir bien el tiempo.
    */
-  cerrarTramo(): Promise<void> {
+  cerrarTramo(): Promise<boolean> {
     return this.encolar(async () => {
       const jornada = this.jornadaHoy;
       if (!jornada) return;
@@ -220,14 +258,14 @@ class EstadoApp {
   }
 
   /** Guarda una jornada completa (alta o corrección manual). */
-  guardar(jornada: Jornada): Promise<void> {
+  guardar(jornada: Jornada): Promise<boolean> {
     return this.encolar(async () => {
       await guardarJornada($state.snapshot(jornada));
       this.aplicar($state.snapshot(jornada));
     });
   }
 
-  eliminar(fecha: string): Promise<void> {
+  eliminar(fecha: string): Promise<boolean> {
     return this.encolar(async () => {
       await borrarJornada(fecha);
       this.jornadas = this.jornadas.filter((j) => j.fecha !== fecha);
@@ -235,7 +273,7 @@ class EstadoApp {
   }
 
   /** Cambia uno o varios ajustes y los persiste. */
-  actualizarAjustes(cambios: Partial<Ajustes>): Promise<void> {
+  actualizarAjustes(cambios: Partial<Ajustes>): Promise<boolean> {
     return this.encolar(async () => {
       const siguientes = { ...this.ajustes, ...cambios };
       await guardarAjustes($state.snapshot(siguientes));
@@ -243,8 +281,12 @@ class EstadoApp {
     });
   }
 
-  /** Restaura una copia ya validada, en una transacción, y recarga el estado. */
-  importar(jornadas: Jornada[], ajustes: Ajustes | null): Promise<void> {
+  /**
+   * Restaura una copia ya validada, en una transacción, y recarga el estado.
+   * Devuelve `false` si la transacción no se pudo completar, para que la
+   * interfaz no anuncie una restauración que no ha ocurrido.
+   */
+  importar(jornadas: Jornada[], ajustes: Ajustes | null): Promise<boolean> {
     return this.encolar(async () => {
       await importarCopia(
         $state.snapshot(jornadas),
@@ -253,6 +295,7 @@ class EstadoApp {
       const recargado = await cargarTodo();
       this.jornadas = recargado.jornadas;
       this.ajustes = recargado.ajustes;
+      await this.congelarSemanasCerradas();
     });
   }
 }

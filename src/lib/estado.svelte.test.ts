@@ -9,9 +9,11 @@ import 'fake-indexeddb/auto';
 
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { db } from './db';
+import { db, leerObjetivosSemanas } from './db';
 import { app } from './estado.svelte';
-import { AJUSTES_POR_DEFECTO } from './tipos';
+import { lunesDe, sumarDias } from './fechas';
+import { instanteLocal } from './parseo';
+import { AJUSTES_POR_DEFECTO, type Jornada } from './tipos';
 
 async function limpiar(): Promise<void> {
   await db.jornadas.clear();
@@ -148,6 +150,63 @@ describe('ajustes y borrado', () => {
   });
 });
 
+describe('objetivos congelados por semana', () => {
+  beforeEach(limpiar);
+
+  it('congela el objetivo de las semanas ya cerradas al arrancar', async () => {
+    // Regresión: sin congelar, cambiar las horas semanales reescribía hacia
+    // atrás el saldo que el usuario ya tenía apuntado.
+    const haceDosSemanas = lunesDe(sumarDias(app.hoy, -14));
+    const jornada: Jornada = {
+      fecha: haceDosSemanas,
+      tipo: 'laborable',
+      tramos: [
+        {
+          id: 'a',
+          inicio: instanteLocal(haceDosSemanas, '09:00')!,
+          fin: instanteLocal(haceDosSemanas, '17:00')!,
+        },
+      ],
+    };
+    await db.jornadas.put(jornada);
+
+    await app.iniciar();
+    app.detener();
+
+    const congelados = await leerObjetivosSemanas();
+    expect(congelados[haceDosSemanas]).toBe(2400);
+  });
+
+  it('el saldo no cambia al cambiar el límite semanal después', async () => {
+    const lunes = lunesDe(sumarDias(app.hoy, -14));
+
+    // Semana cerrada de 42 h 30 min: cinco días de 8 h 30 min, con 2 h 30 min de más.
+    for (let dia = 0; dia < 5; dia += 1) {
+      const fecha = sumarDias(lunes, dia);
+      await db.jornadas.put({
+        fecha,
+        tipo: 'laborable',
+        tramos: [
+          {
+            id: `${fecha}-0`,
+            inicio: instanteLocal(fecha, '09:00')!,
+            fin: instanteLocal(fecha, '17:30')!,
+          },
+        ],
+      });
+    }
+
+    await app.iniciar();
+    app.detener();
+    const antes = app.saldo.minutos;
+    expect(antes).toBe(150);
+
+    // Cambiar el contrato a 60 h no puede reescribir lo que ya estaba apuntado.
+    await app.actualizarAjustes({ horasSemana: 60 });
+    expect(app.saldo.minutos).toBe(150);
+  });
+});
+
 describe('importación de copia', () => {
   beforeEach(limpiar);
 
@@ -177,5 +236,21 @@ describe('importación de copia', () => {
   it('mantiene los ajustes actuales cuando la copia no trae unos válidos', async () => {
     await app.importar([], null);
     expect(app.ajustes).toEqual(AJUSTES_POR_DEFECTO);
+  });
+
+  it('avisa de verdad cuando la restauración no se puede completar', async () => {
+    // Regresión: la interfaz anunciaba «Copia restaurada» aunque la transacción
+    // hubiera fallado, porque el error se tragaba dentro de la cola.
+    const jornada: Jornada = { fecha: '2026-09-30', tipo: 'laborable', tramos: [] };
+
+    db.close();
+    const ok = await app.importar([jornada], null);
+    expect(ok).toBe(false);
+    expect(app.error).toMatch(/no se ha podido guardar/i);
+
+    await db.open();
+    app.error = null;
+    expect(await app.importar([jornada], null)).toBe(true);
+    expect(app.error).toBeNull();
   });
 });

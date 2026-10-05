@@ -9,6 +9,7 @@ import {
   resumenDia,
   resumenSemana,
   saldoExtras,
+  semanasSinCongelar,
   situacionActual,
 } from './calculo';
 import { diasEntre, fechasDeSemana, lunesDe, sumarDias } from './fechas';
@@ -409,6 +410,39 @@ describe('saldo acumulado de extras', () => {
     const saldo = saldoExtras([...otra, ...semanaAnterior], AJUSTES, LUNES, ts(LUNES, '12:00'));
     expect(saldo.minutos).toBe(105);
     expect(saldo.semanas).toBe(2);
+  });
+
+  it('el objetivo congelado de una semana cerrada no lo reescribe un cambio de ajustes', () => {
+    const ahora = ts(LUNES, '12:00');
+    const semana = semanaConExtra('2026-09-21', 60);
+
+    expect(saldoExtras(semana, AJUSTES, LUNES, ahora).minutos).toBe(60);
+
+    // Se congela el objetivo de la semana cerrada.
+    const congelados = semanasSinCongelar(semana, AJUSTES, LUNES, ahora, {});
+    expect(congelados['2026-09-21']).toBe(2400);
+
+    // El usuario cambia su contrato a 45 h a la semana.
+    const conOtraJornada: Ajustes = { ...AJUSTES, horasSemana: 45 };
+
+    // Sin congelar, el saldo histórico se reescribe hacia atrás y miente...
+    expect(saldoExtras(semana, conOtraJornada, LUNES, ahora).minutos).toBe(0);
+    // ...y con el objetivo congelado, el saldo que ya estaba apuntado se mantiene.
+    expect(saldoExtras(semana, conOtraJornada, LUNES, ahora, congelados).minutos).toBe(60);
+  });
+
+  it('no vuelve a congelar una semana que ya lo estaba', () => {
+    const ahora = ts(LUNES, '12:00');
+    const semana = semanaConExtra('2026-09-21', 60);
+    const previos = { '2026-09-21': 9999 };
+    expect(semanasSinCongelar(semana, AJUSTES, LUNES, ahora, previos)).toEqual({});
+  });
+
+  it('no congela la semana en curso', () => {
+    const ahora = ts(LUNES, '12:00');
+    const semana = semanaConExtra(LUNES, 30);
+    const pendientes = semanasSinCongelar(semana, AJUSTES, LUNES, ahora, {});
+    expect(pendientes[LUNES]).toBeUndefined();
   });
 
   it('no cuenta las semanas sin exceso', () => {

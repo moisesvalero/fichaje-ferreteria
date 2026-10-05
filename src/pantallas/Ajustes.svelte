@@ -117,6 +117,10 @@
         semana se calcula con las horas semanales, repartidas entre esos días.
       </p>
     {/if}
+    <p class="caption ayuda">
+      El objetivo de cada semana se congela al cerrarse, así que cambiar estos límites no reescribe
+      el saldo que ya tenías apuntado.
+    </p>
   </div>
 </section>
 

@@ -128,6 +128,13 @@ export function minutosObjetivoSemana(ajustes: Ajustes, diasComputables: number)
   return Math.round((ajustes.horasSemana * 60 * diasComputables) / totalDias);
 }
 
+/**
+ * Objetivos ya congelados de semanas cerradas, indexados por su lunes.
+ * Se congelan al cerrarse para que cambiar el límite semanal no reescriba hacia
+ * atrás el saldo: el saldo es constancia, y una constancia que cambia sola no vale.
+ */
+export type ObjetivosCongelados = Record<string, number>;
+
 /** Semáforo a partir de una cifra y su objetivo, respetando el margen de aviso. */
 export function estadoDeCifra(minutos: number, objetivo: number, margen: number): Estado {
   const exceso = minutos - objetivo;
@@ -171,13 +178,17 @@ function indiceDe(jornadas: Jornada[]): Map<string, Jornada> {
   return new Map(jornadas.map((j) => [j.fecha, j]));
 }
 
-/** Resumen de la semana que empieza en `lunes`, usando un índice ya construido. */
+/**
+ * Resumen de la semana que empieza en `lunes`, usando un índice ya construido.
+ * `objetivoCongelado` se usa para las semanas cerradas cuyo objetivo ya se fijó.
+ */
 function resumenSemanaConIndice(
   indice: Map<string, Jornada>,
   ajustes: Ajustes,
   lunes: string,
   hoy: string,
   ahora: number,
+  objetivoCongelado?: number,
 ): ResumenSemana {
   const fechas = fechasDeSemana(lunes);
 
@@ -192,7 +203,7 @@ function resumenSemanaConIndice(
     }
   }
 
-  const minutosObjetivo = minutosObjetivoSemana(ajustes, diasComputables);
+  const minutosObjetivo = objetivoCongelado ?? minutosObjetivoSemana(ajustes, diasComputables);
 
   return {
     lunes,
@@ -213,8 +224,52 @@ export function resumenSemana(
   fechaRef: string,
   hoy: string,
   ahora: number,
+  objetivoCongelado?: number,
 ): ResumenSemana {
-  return resumenSemanaConIndice(indiceDe(jornadas), ajustes, lunesDe(fechaRef), hoy, ahora);
+  return resumenSemanaConIndice(
+    indiceDe(jornadas),
+    ajustes,
+    lunesDe(fechaRef),
+    hoy,
+    ahora,
+    objetivoCongelado,
+  );
+}
+
+/**
+ * Semanas ya cerradas cuyo objetivo todavía no se ha congelado.
+ * El estado las congela al arrancar, y así el saldo deja de depender de los
+ * ajustes actuales.
+ */
+export function semanasSinCongelar(
+  jornadas: Jornada[],
+  ajustes: Ajustes,
+  hoy: string,
+  ahora: number,
+  objetivos: ObjetivosCongelados,
+): ObjetivosCongelados {
+  if (jornadas.length === 0) return {};
+
+  const primeraFecha = jornadas
+    .map((j) => j.fecha)
+    .sort()
+    .at(0);
+  if (primeraFecha === undefined) return {};
+
+  const indice = indiceDe(jornadas);
+  const lunesActual = lunesDe(hoy);
+  const pendientes: ObjetivosCongelados = {};
+  let cursor = lunesDe(primeraFecha);
+
+  for (let i = 0; cursor <= lunesActual && i < 10_400; i += 1) {
+    const resumen = resumenSemanaConIndice(indice, ajustes, cursor, hoy, ahora);
+    if (resumen.cerrada && objetivos[cursor] === undefined) {
+      pendientes[cursor] = resumen.minutosObjetivo;
+    }
+    cursor = sumarDias(cursor, 7);
+  }
+
+  return pendientes;
 }
 
 /** Saldo acumulado de extras. */
@@ -238,6 +293,7 @@ export function saldoExtras(
   ajustes: Ajustes,
   hoy: string,
   ahora: number,
+  objetivos: ObjetivosCongelados = {},
 ): SaldoExtras {
   if (jornadas.length === 0) return { minutos: 0, provisional: 0, semanas: 0 };
 
@@ -256,7 +312,8 @@ export function saldoExtras(
 
   // Guarda de seguridad: nunca más de 200 años de semanas.
   for (let i = 0; cursor <= lunesActual && i < 10_400; i += 1) {
-    const resumen = resumenSemanaConIndice(indice, ajustes, cursor, hoy, ahora);
+    // Las semanas cerradas usan su objetivo congelado, si lo tienen.
+    const resumen = resumenSemanaConIndice(indice, ajustes, cursor, hoy, ahora, objetivos[cursor]);
     if (resumen.cerrada) {
       minutos += resumen.minutosExtra;
       semanas += 1;

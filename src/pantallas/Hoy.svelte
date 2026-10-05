@@ -115,7 +115,7 @@
     <span class="numero cifra-fuerte">{formatearMinutos(app.semana.minutosTrabajados)}</span>
     <span class="caption">de {formatearMinutos(app.semana.minutosObjetivo)} objetivo</span>
   </p>
-  {#if app.semana.diasComputables !== 5}
+  {#if app.semana.diasComputables !== app.ajustes.diasLaborables.length}
     <p class="caption">Objetivo ajustado a {app.semana.diasComputables} días laborables</p>
   {/if}
 </section>
