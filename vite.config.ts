@@ -95,6 +95,11 @@ export default defineConfig({
         // incluye la tipografía y las pantallas de arranque de iOS.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: '/index.html',
+        // Sin esto, el service worker contesta con el HTML de la app a CUALQUIER
+        // navegación, incluida la del login con Google (/appwrite/account/...):
+        // el navegador se quedaba en esa URL con la app pintada y el login no
+        // llegaba a abrirse. Estas rutas tienen que irse a la red.
+        navigateFallbackDenylist: [/^\/appwrite/, /^\/api/],
       },
     }),
   ],
