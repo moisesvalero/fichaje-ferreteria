@@ -141,7 +141,7 @@ Una **segunda pasada** encontró un crítico más de la misma familia y tres imp
 - `standalone` con `viewport-fit=cover` y área segura respetada arriba y abajo.
 - **Sin rebote blanco** al tirar hacia abajo, sin destello al pulsar y sin retardo de doble toque.
 - **Pantallas de arranque para siete tamaños de iPhone**: iOS no las genera desde el manifest, así que sin ellas aparece un blanco al abrir. Se generan desde el mismo SVG del icono.
-- Iconos: **180** (iOS), **192** y **512**, más una variante **`maskable`** con el fondo a sangre para que ningún recorte deje un borde raro.
+- Iconos: **180** (iOS), **192** y **512**, más una variante **`maskable`** con el fondo a sangre para que ningún recorte deje un borde raro. Se generan desde el SVG del icono con `./scripts/generar-iconos.sh` (macOS, sin dependencias).
 - La actualización del service worker **no recarga la app sola**: avisa dentro y actualizas cuando te venga bien. Con recarga automática se podía perder una corrección a medias en el editor.
 
 ## Rendimiento
