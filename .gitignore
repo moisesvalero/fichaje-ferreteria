@@ -3,6 +3,11 @@ dist/
 dev-dist/
 coverage/
 *.local
+
+# Variables de entorno: nunca al repositorio. La plantilla sí.
+.env
+.env.*
+!.env.example
 .DS_Store
 .vite/
 .stitch/

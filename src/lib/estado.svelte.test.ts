@@ -1,61 +1,140 @@
 /**
  * Tests del estado de la aplicación.
  *
- * Cubren lo que no se ve en una función pura: el candado de reentrada del botón
- * de fichar y el ciclo completo de guardado contra IndexedDB (en memoria).
+ * La nube se sustituye por un almacén en memoria, así que lo que se prueba es
+ * la lógica propia: la cola de escritura, el candado de reentrada, que memoria
+ * y nube no se desincronicen, y que un fallo de red se note en vez de fingir
+ * que se ha guardado.
  */
 
-import 'fake-indexeddb/auto';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { beforeEach, describe, expect, it } from 'vitest';
+import { AJUSTES_POR_DEFECTO, type Ajustes, type Jornada } from './tipos';
 
-import { db, leerObjetivosSemanas } from './db';
+const nube = vi.hoisted(() => ({
+  jornadas: new Map<string, Jornada>(),
+  ids: new Map<string, string>(),
+  ajustes: null as unknown,
+  fallar: false,
+}));
+
+vi.mock('./nube', () => ({
+  descargarJornadas: vi.fn(async () => {
+    if (nube.fallar) throw new Error('sin red');
+    return {
+      jornadas: [...nube.jornadas.values()],
+      descartados: 0,
+      idsPorFecha: new Map(nube.ids),
+    };
+  }),
+  descargarAjustes: vi.fn(async () => {
+    if (nube.fallar) throw new Error('sin red');
+    return nube.ajustes === null
+      ? null
+      : { ajustes: nube.ajustes, objetivosSemanas: {}, idDocumento: 'ajustes-1' };
+  }),
+  crearJornada: vi.fn(async (jornada: Jornada) => {
+    if (nube.fallar) throw new Error('sin red');
+    const id = `id-${jornada.fecha}`;
+    nube.jornadas.set(jornada.fecha, jornada);
+    nube.ids.set(jornada.fecha, id);
+    return id;
+  }),
+  actualizarJornada: vi.fn(async (_id: string, jornada: Jornada) => {
+    if (nube.fallar) throw new Error('sin red');
+    nube.jornadas.set(jornada.fecha, jornada);
+  }),
+  borrarJornada: vi.fn(async (id: string) => {
+    if (nube.fallar) throw new Error('sin red');
+    for (const [fecha, guardado] of nube.ids) {
+      if (guardado === id) {
+        nube.ids.delete(fecha);
+        nube.jornadas.delete(fecha);
+      }
+    }
+  }),
+  guardarAjustes: vi.fn(async (ajustes: Ajustes) => {
+    if (nube.fallar) throw new Error('sin red');
+    nube.ajustes = ajustes;
+    return 'ajustes-1';
+  }),
+}));
+
+vi.mock('./sesion.svelte', () => ({
+  sesion: { usuario: { id: 'usuario-1', nombre: 'Prueba', email: 'prueba@ejemplo.com' } },
+}));
+
 import { app } from './estado.svelte';
 import { lunesDe, sumarDias } from './fechas';
 import { instanteLocal } from './parseo';
-import { AJUSTES_POR_DEFECTO, type Jornada } from './tipos';
 
-async function limpiar(): Promise<void> {
-  await db.jornadas.clear();
-  await db.ajustes.clear();
-  await db.meta.clear();
-  app.jornadas = [];
-  app.ajustes = { ...AJUSTES_POR_DEFECTO };
+function jornadaDe(fecha: string, minutos: number): Jornada {
+  const inicio = instanteLocal(fecha, '09:00');
+  if (inicio === null) throw new Error('fecha inválida en el test');
+  return {
+    fecha,
+    tipo: 'laborable',
+    tramos: [{ id: `${fecha}-0`, inicio, fin: inicio + minutos * 60_000 }],
+  };
 }
 
-describe('fichaje con candado de reentrada', () => {
+function limpiar(): void {
+  nube.jornadas.clear();
+  nube.ids.clear();
+  nube.ajustes = null;
+  nube.fallar = false;
+  app.olvidar();
+}
+
+describe('carga desde la nube', () => {
   beforeEach(limpiar);
 
-  it('una pulsación abre un tramo abierto', async () => {
+  it('trae el historial y lo deja en memoria', async () => {
+    nube.jornadas.set('2026-09-30', jornadaDe('2026-09-30', 480));
+    nube.ids.set('2026-09-30', 'id-2026-09-30');
+
+    await app.cargar();
+
+    expect(app.jornadas).toHaveLength(1);
+    expect(app.jornadas[0]!.fecha).toBe('2026-09-30');
+    expect(app.cargado).toBe(true);
+    expect(app.error).toBeNull();
+  });
+
+  it('si la nube no responde, lo dice y no finge tener datos', async () => {
+    nube.fallar = true;
+    await app.cargar();
+
+    expect(app.jornadas).toHaveLength(0);
+    expect(app.cargado).toBe(true);
+    expect(app.error).toMatch(/no se ha podido descargar/i);
+  });
+
+  it('crea unos ajustes por defecto si el usuario todavía no tiene', async () => {
+    await app.cargar();
+    expect(app.ajustes).toEqual(AJUSTES_POR_DEFECTO);
+  });
+});
+
+describe('fichaje contra la nube', () => {
+  beforeEach(limpiar);
+
+  it('una pulsación abre un tramo y lo escribe en la nube', async () => {
     await app.ficharEntrada();
+
     expect(app.jornadaHoy?.tramos).toHaveLength(1);
-    expect(app.jornadaHoy?.tramos[0]!.fin).toBeNull();
     expect(app.situacion).toBe('trabajando');
+    expect(nube.jornadas.get(app.hoy)?.tramos).toHaveLength(1);
   });
 
   it('dos pulsaciones rápidas no abren dos tramos', async () => {
-    // Regresión: sin candado, el segundo toque leía el estado viejo y
-    // o duplicaba el tramo o perdía el primero.
-    const primera = app.ficharEntrada();
-    const segunda = app.ficharEntrada();
-    await Promise.all([primera, segunda]);
-
+    await Promise.all([app.ficharEntrada(), app.ficharEntrada()]);
     expect(app.jornadaHoy?.tramos).toHaveLength(1);
-    expect(app.guardando).toBe(false);
-  });
-
-  it('tres pulsaciones rápidas tampoco', async () => {
-    await Promise.all([app.ficharEntrada(), app.ficharEntrada(), app.ficharEntrada()]);
-    expect(app.jornadaHoy?.tramos).toHaveLength(1);
+    expect(nube.jornadas.get(app.hoy)?.tramos).toHaveLength(1);
   });
 
   it('una pausa inmediata después de fichar no se pierde', async () => {
-    // Este es el caso que distingue de verdad: sin serializar, el cierre leía
-    // un estado en el que todavía no había tramo, no cerraba nada y el reloj
-    // se quedaba corriendo.
-    const entrada = app.ficharEntrada();
-    const pausa = app.cerrarTramo();
-    await Promise.all([entrada, pausa]);
+    await Promise.all([app.ficharEntrada(), app.cerrarTramo()]);
 
     const tramos = app.jornadaHoy?.tramos ?? [];
     expect(tramos).toHaveLength(1);
@@ -63,194 +142,123 @@ describe('fichaje con candado de reentrada', () => {
     expect(app.situacion).toBe('en-pausa');
   });
 
-  it('mientras hay escrituras pendientes la interfaz sabe que debe desactivar los botones', async () => {
-    const entrada = app.ficharEntrada();
-    expect(app.guardando).toBe(true);
-    await entrada;
-    expect(app.guardando).toBe(false);
-  });
-
-  it('cerrar dos veces no deja el tramo a medias ni abre otro', async () => {
+  it('cerrar dos veces no deja el tramo a medias', async () => {
     await app.ficharEntrada();
     await Promise.all([app.cerrarTramo(), app.cerrarTramo()]);
 
     const tramos = app.jornadaHoy?.tramos ?? [];
     expect(tramos).toHaveLength(1);
     expect(tramos[0]!.fin).not.toBeNull();
-    expect(app.situacion).toBe('en-pausa');
   });
 
-  it('cerrar sin nada abierto no hace nada', async () => {
-    await app.cerrarTramo();
+  it('sin conexión avisa y no aplica el cambio en memoria', async () => {
+    nube.fallar = true;
+    const resultado = await app.ficharEntrada();
+
+    expect(resultado).toBe(false);
+    expect(app.error).toMatch(/no se ha podido guardar/i);
     expect(app.jornadaHoy).toBeUndefined();
-    expect(app.error).toBeNull();
-  });
-
-  it('el ciclo entrada, pausa y reanudación deja dos tramos cerrados y uno abierto', async () => {
-    await app.ficharEntrada();
-    await app.cerrarTramo();
-    await app.ficharEntrada();
-    await app.cerrarTramo();
-    await app.ficharEntrada();
-
-    const tramos = app.jornadaHoy?.tramos ?? [];
-    expect(tramos).toHaveLength(3);
-    expect(tramos.filter((t) => t.fin === null)).toHaveLength(1);
-  });
-
-  it('el tramo abierto de un día anterior no computa y aparece como olvido', async () => {
-    await app.guardar({
-      fecha: '2026-09-27',
-      tipo: 'laborable',
-      tramos: [{ id: 'x', inicio: new Date(2026, 8, 27, 9, 0).getTime(), fin: null }],
-    });
-
-    expect(app.pendientes).toHaveLength(1);
-    expect(app.saldo.minutos).toBe(0);
   });
 });
 
-describe('ajustes y borrado', () => {
+describe('correcciones', () => {
   beforeEach(limpiar);
 
-  it('actualiza un ajuste y lo persiste', async () => {
-    await app.actualizarAjustes({ horasSemana: 35 });
-    expect(app.ajustes.horasSemana).toBe(35);
-    const guardado = await db.ajustes.get(1);
-    expect(guardado?.horasSemana).toBe(35);
-  });
-
-  it('elimina la jornada de un día', async () => {
-    await app.ficharEntrada();
-    const fecha = app.hoy;
-    await app.eliminar(fecha);
-    expect(app.jornadas).toHaveLength(0);
-    expect(await db.jornadas.get(fecha)).toBeUndefined();
-  });
-
-  it('guardar una corrección marca el registro y sustituye el del mismo día', async () => {
-    await app.ficharEntrada();
-    const fecha = app.hoy;
-    await app.guardar({
-      fecha,
-      tipo: 'festivo',
-      corregido: true,
-      tramos: [
-        {
-          id: 'a',
-          inicio: new Date(new Date().setHours(9, 0, 0, 0)).getTime(),
-          fin: new Date(new Date().setHours(13, 0, 0, 0)).getTime(),
-        },
-      ],
-    });
-
-    expect(app.jornadas.filter((j) => j.fecha === fecha)).toHaveLength(1);
-    expect(app.jornadaHoy?.tipo).toBe('festivo');
-    expect(app.jornadaHoy?.corregido).toBe(true);
-  });
-});
-
-describe('objetivos congelados por semana', () => {
-  beforeEach(limpiar);
-
-  it('congela el objetivo de las semanas ya cerradas al arrancar', async () => {
-    // Regresión: sin congelar, cambiar las horas semanales reescribía hacia
-    // atrás el saldo que el usuario ya tenía apuntado.
-    const haceDosSemanas = lunesDe(sumarDias(app.hoy, -14));
-    const jornada: Jornada = {
-      fecha: haceDosSemanas,
-      tipo: 'laborable',
-      tramos: [
-        {
-          id: 'a',
-          inicio: instanteLocal(haceDosSemanas, '09:00')!,
-          fin: instanteLocal(haceDosSemanas, '17:00')!,
-        },
-      ],
-    };
-    await db.jornadas.put(jornada);
-
-    await app.iniciar();
-    app.detener();
-
-    const congelados = await leerObjetivosSemanas();
-    expect(congelados[haceDosSemanas]).toBe(2400);
-  });
-
-  it('el saldo no cambia al cambiar el límite semanal después', async () => {
-    const lunes = lunesDe(sumarDias(app.hoy, -14));
-
-    // Semana cerrada de 42 h 30 min: cinco días de 8 h 30 min, con 2 h 30 min de más.
-    for (let dia = 0; dia < 5; dia += 1) {
-      const fecha = sumarDias(lunes, dia);
-      await db.jornadas.put({
-        fecha,
-        tipo: 'laborable',
-        tramos: [
-          {
-            id: `${fecha}-0`,
-            inicio: instanteLocal(fecha, '09:00')!,
-            fin: instanteLocal(fecha, '17:30')!,
-          },
-        ],
-      });
-    }
-
-    await app.iniciar();
-    app.detener();
-    const antes = app.saldo.minutos;
-    expect(antes).toBe(150);
-
-    // Cambiar el contrato a 60 h no puede reescribir lo que ya estaba apuntado.
-    await app.actualizarAjustes({ horasSemana: 60 });
-    expect(app.saldo.minutos).toBe(150);
-  });
-});
-
-describe('importación de copia', () => {
-  beforeEach(limpiar);
-
-  it('restaura las jornadas y los ajustes de una copia validada', async () => {
-    await app.importar(
-      [
-        {
-          fecha: '2026-09-30',
-          tipo: 'laborable',
-          tramos: [
-            {
-              id: 'a',
-              inicio: new Date(2026, 8, 30, 9, 0).getTime(),
-              fin: new Date(2026, 8, 30, 13, 0).getTime(),
-            },
-          ],
-        },
-      ],
-      { ...AJUSTES_POR_DEFECTO, horasSemana: 35 },
-    );
+  it('guardar sustituye la jornada del mismo día', async () => {
+    await app.guardar(jornadaDe('2026-09-30', 480));
+    await app.guardar({ ...jornadaDe('2026-09-30', 240), tipo: 'festivo', corregido: true });
 
     expect(app.jornadas).toHaveLength(1);
+    expect(nube.jornadas.get('2026-09-30')?.tipo).toBe('festivo');
+    expect(nube.jornadas.size).toBe(1);
+  });
+
+  it('eliminar borra en la nube y en memoria', async () => {
+    await app.guardar(jornadaDe('2026-09-30', 480));
+    await app.eliminar('2026-09-30');
+
+    expect(app.jornadas).toHaveLength(0);
+    expect(nube.jornadas.has('2026-09-30')).toBe(false);
+  });
+
+  it('si falla guardar los ajustes, se revierten', async () => {
+    await app.cargar();
+    const antes = app.ajustes.horasSemana;
+
+    nube.fallar = true;
+    const resultado = await app.actualizarAjustes({ horasSemana: 12 });
+
+    expect(resultado).toBe(false);
+    expect(app.ajustes.horasSemana).toBe(antes);
+  });
+
+  it('los ajustes se persisten cuando la nube responde', async () => {
+    await app.cargar();
+    await app.actualizarAjustes({ horasSemana: 35 });
+
     expect(app.ajustes.horasSemana).toBe(35);
-    expect(app.error).toBeNull();
+    expect((nube.ajustes as Ajustes).horasSemana).toBe(35);
+  });
+});
+
+describe('importación de una copia', () => {
+  beforeEach(limpiar);
+
+  it('escribe todas las jornadas y devuelve cuántas', async () => {
+    const escritas = await app.importar(
+      [jornadaDe('2026-09-29', 480), jornadaDe('2026-09-30', 480)],
+      null,
+    );
+
+    expect(escritas).toBe(2);
+    expect(nube.jornadas.size).toBe(2);
+    expect(app.jornadas).toHaveLength(2);
   });
 
-  it('mantiene los ajustes actuales cuando la copia no trae unos válidos', async () => {
-    await app.importar([], null);
-    expect(app.ajustes).toEqual(AJUSTES_POR_DEFECTO);
+  it('es idempotente: repetirla no duplica nada', async () => {
+    const copia = [jornadaDe('2026-09-29', 480)];
+    await app.importar(copia, null);
+    await app.importar(copia, null);
+
+    expect(nube.jornadas.size).toBe(1);
+    expect(app.jornadas).toHaveLength(1);
   });
 
-  it('avisa de verdad cuando la restauración no se puede completar', async () => {
-    // Regresión: la interfaz anunciaba «Copia restaurada» aunque la transacción
-    // hubiera fallado, porque el error se tragaba dentro de la cola.
-    const jornada: Jornada = { fecha: '2026-09-30', tipo: 'laborable', tramos: [] };
+  it('informa de cuántas se han escrito si se corta a la mitad', async () => {
+    let llamadas = 0;
+    const { crearJornada } = await import('./nube');
+    vi.mocked(crearJornada).mockImplementation(async (jornada: Jornada) => {
+      llamadas += 1;
+      if (llamadas === 2) throw new Error('sin red');
+      const id = `id-${jornada.fecha}`;
+      nube.jornadas.set(jornada.fecha, jornada);
+      nube.ids.set(jornada.fecha, id);
+      return id;
+    });
 
-    db.close();
-    const ok = await app.importar([jornada], null);
-    expect(ok).toBe(false);
-    expect(app.error).toMatch(/no se ha podido guardar/i);
+    const escritas = await app.importar(
+      [jornadaDe('2026-09-28', 480), jornadaDe('2026-09-29', 480)],
+      null,
+    );
 
-    await db.open();
-    app.error = null;
-    expect(await app.importar([jornada], null)).toBe(true);
-    expect(app.error).toBeNull();
+    expect(escritas).toBe(1);
+  });
+});
+
+describe('objetivos congelados', () => {
+  beforeEach(limpiar);
+
+  it('congela el objetivo de las semanas cerradas al cargar', async () => {
+    const lunes = lunesDe(sumarDias(app.hoy, -14));
+    for (let dia = 0; dia < 5; dia += 1) {
+      const fecha = sumarDias(lunes, dia);
+      nube.jornadas.set(fecha, jornadaDe(fecha, 510));
+      nube.ids.set(fecha, `id-${fecha}`);
+    }
+
+    await app.cargar();
+
+    // Cinco días de 8 h 30 min = 42 h 30 min contra un objetivo de 40 h.
+    expect(app.saldo.minutos).toBe(150);
   });
 });

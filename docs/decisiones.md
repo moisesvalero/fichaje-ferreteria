@@ -32,8 +32,22 @@ Empezaba a trabajar en una ferretería y quería controlar que hacía mis **8 h 
 | **Sin router**                    | SvelteKit, svelte-spa-router | Cinco pestañas y una hoja modal no justifican una dependencia de enrutado                              |
 | **PDF diferido**                  | Importar jsPDF arriba        | jsPDF arrastra `html2canvas` y `dompurify`: 200 kB que no deben cargarse para ver un reloj             |
 | **CSS propio con tokens**         | Tailwind                     | Seis pantallas con una jerarquía muy marcada: las variables CSS dan control exacto y cero dependencias |
-| **Reglas en un módulo puro**      | Lógica en los componentes    | El motor de cálculo es lo único que puede mentir; aislado y con 112 tests, es verificable              |
+| **Reglas en un módulo puro**      | Lógica en los componentes    | El motor de cálculo es lo único que puede mentir; aislado y con 116 tests, es verificable              |
 | **`fake-indexeddb` en los tests** | Probar solo lo puro          | La cola de escritura y el candado de reentrada del botón de fichar son donde estaban los bugs reales   |
+
+## Cambio de la decisión 12: de local a la nube
+
+La decisión original era **todo en el dispositivo, sin cuentas ni nube**. Se cambió, y conviene dejar por qué.
+
+**Qué la motivó:** con los datos solo en el móvil, perderlo o borrar los datos del navegador era perder el historial entero. La copia a un archivo dependía de acordarse de hacerla.
+
+**Qué se gana:** el historial sobrevive al móvil, y se puede consultar desde otro dispositivo.
+
+**Qué se pierde, y es real:** para fichar hace falta conexión. Antes la app abría y funcionaba en un sótano sin cobertura; ahora no. Es la contrapartida que se aceptó a cambio de no poder perder el historial, y la app lo dice en pantalla en vez de fingir que ha guardado.
+
+**Cómo se protege:** login con Google, y cada documento con permisos solo para su dueño. Comprobado con dos usuarios reales: uno veía un documento del otro cuando el permiso de lectura estaba en la colección, y dejó de verlo al moverlo al documento. Appwrite suma los permisos de colección a los de documento, así que la colección concede únicamente `create`.
+
+**Alternativa que se descartó:** sincronización local-first (seguir funcionando sin conexión y subir después). Es mejor para el uso real, pero exige resolver conflictos entre dispositivos. Si algún día molesta la falta de cobertura, ese es el camino, y no hay que rehacer el motor: `calculo.ts` es puro y no sabe de dónde vienen los datos.
 
 ## Lo que queda fuera de alcance (a propósito)
 

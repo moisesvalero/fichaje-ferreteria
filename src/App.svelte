@@ -3,6 +3,8 @@
 
   import { actualizacion } from './lib/actualizacion.svelte';
   import { app } from './lib/estado.svelte';
+  import { sesion } from './lib/sesion.svelte';
+  import Acceso from './pantallas/Acceso.svelte';
   import Ajustes from './pantallas/Ajustes.svelte';
   import Editor from './pantallas/Editor.svelte';
   import Exportar from './pantallas/Exportar.svelte';
@@ -51,8 +53,18 @@
   let fechaEditor = $state<string | null>(null);
 
   onMount(() => {
-    void app.iniciar();
+    app.iniciarReloj();
+    void sesion.comprobar();
     return () => app.detener();
+  });
+
+  // Al entrar se descarga el historial; al salir se vacía todo.
+  $effect(() => {
+    if (sesion.usuario === null) {
+      app.olvidar();
+      return;
+    }
+    void app.cargar();
   });
 
   function abrirEditor(fecha: string): void {
@@ -129,7 +141,11 @@
       </div>
     {/if}
 
-    {#if !app.cargado}
+    {#if sesion.comprobando}
+      <p class="caption">Comprobando la sesión…</p>
+    {:else if sesion.usuario === null}
+      <Acceso />
+    {:else if !app.cargado}
       <p class="caption">Cargando tus datos…</p>
     {:else if vista === 'hoy'}
       <Hoy {abrirEditor} />
@@ -144,28 +160,30 @@
     {/if}
   </main>
 
-  <nav class="pestanas" aria-label="Navegación principal">
-    {#each PESTANAS as pestana (pestana.id)}
-      <button
-        type="button"
-        aria-current={vista === pestana.id ? 'page' : undefined}
-        onclick={() => irA(pestana.id)}
-      >
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          {#each pestana.icono as d (d)}
-            <path
-              {d}
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          {/each}
-        </svg>
-        {pestana.etiqueta}
-      </button>
-    {/each}
-  </nav>
+  {#if sesion.usuario !== null}
+    <nav class="pestanas" aria-label="Navegación principal">
+      {#each PESTANAS as pestana (pestana.id)}
+        <button
+          type="button"
+          aria-current={vista === pestana.id ? 'page' : undefined}
+          onclick={() => irA(pestana.id)}
+        >
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            {#each pestana.icono as d (d)}
+              <path
+                {d}
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            {/each}
+          </svg>
+          {pestana.etiqueta}
+        </button>
+      {/each}
+    </nav>
+  {/if}
 </div>
 
 {#if fechaEditor !== null}

@@ -4,18 +4,18 @@
 
 **PWA personal para controlar tus horas de trabajo. 8 h al día y 40 h a la semana, ni más ni menos.**
 
-Sin cuentas, sin nube, sin backend. Todo el historial vive en tu dispositivo.
+Entras con Google y tus horas se guardan en tu cuenta, así que no las pierdes si cambias de móvil.
 
 [![Demo](https://img.shields.io/badge/demo-fichaje--ferreteria.vercel.app-000000?logo=vercel&logoColor=white)](https://fichaje-ferreteria.vercel.app)
 [![CI](https://github.com/moisesvalero/fichaje-ferreteria/actions/workflows/ci.yml/badge.svg)](https://github.com/moisesvalero/fichaje-ferreteria/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2563EB.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-112%20passing-15803D.svg)](src/lib)
+[![Tests](https://img.shields.io/badge/tests-116%20passing-15803D.svg)](src/lib)
 [![Svelte 5](https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white)](https://svelte.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev)
-[![PWA](https://img.shields.io/badge/PWA-offline%20real-5A0FC8?logo=pwa&logoColor=white)](vite.config.ts)
+[![PWA](https://img.shields.io/badge/PWA-instalable-5A0FC8?logo=pwa&logoColor=white)](vite.config.ts)
 [![Arranque](https://img.shields.io/badge/arranque-59%20kB%20gzip-0F172A.svg)](#rendimiento)
-[![Backend](https://img.shields.io/badge/backend-ninguno-475569.svg)](#privacidad)
+[![Datos](https://img.shields.io/badge/datos-Appwrite%20%C2%B7%20UE-475569.svg)](#cuentas-y-datos)
 [![Diseño](https://img.shields.io/badge/dise%C3%B1o-Google%20Stitch-4285F4?logo=google&logoColor=white)](DESIGN.md)
 
 </div>
@@ -26,7 +26,9 @@ Sin cuentas, sin nube, sin backend. Todo el historial vive en tu dispositivo.
 
 Empecé a trabajar en una ferretería y quería controlar que hacía mis **8 h al día y 40 h a la semana, ni más ni menos**. No para reclamar nada, solo para saber cuánto hacía de más y tener constancia.
 
-Lo que había no servía: las apps de fichaje o son de empresa (con cuenta y jefe) o son hojas de cálculo que abandonas a la semana. Así que decidí construirme una, con tres condiciones: **que funcione sin conexión, que los datos no salgan de mi móvil y que los límites sean configurables**.
+Lo que había no servía: las apps de fichaje o son de empresa (con cuenta y jefe) o son hojas de cálculo que abandonas a la semana. Así que decidí construirme una, con tres condiciones: **que los datos sean míos y estén a salvo, que los límites sean configurables y que instalada en el móvil parezca una app de verdad**.
+
+Al principio era solo local, sin cuentas ni nube. Un día me di cuenta de que eso significaba que **perder el móvil era perder el historial**, así que le añadí cuentas y una base de datos. La contrapartida es honesta: para fichar necesita conexión.
 
 ## Las pantallas
 
@@ -90,24 +92,24 @@ src/
 └── App.svelte              Shell con la barra de pestañas
 ```
 
-**Sin router** (cinco pestañas no lo justifican), **sin Tailwind** (seis pantallas con una jerarquía muy marcada) y **sin backend**, que es justamente el punto.
+**Sin router** (cinco pestañas no lo justifican), **sin Tailwind** (seis pantallas con una jerarquía muy marcada) y **sin backend propio**: el cliente habla directamente con Appwrite, que se encarga de la autenticación y de los permisos por documento.
 
 ## Stack
 
-| Pieza                              | Por qué                                                                                                                             |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| **Svelte 5 + Vite**                | Arranque de 59 kB gzip y reactividad sin ceremonia. Descarté SvelteKit y Next: sin backend ni SEO, el SSR solo añade piezas móviles |
-| **TypeScript en `strict`**         | Con `noUncheckedIndexedAccess` y `noUnusedLocals`, que ya han cazado fallos reales                                                  |
-| **Dexie (IndexedDB)**              | `localStorage` es síncrono, tiene 5 MB y se pierde antes                                                                            |
-| **vite-plugin-pwa**                | Precache completo: la app abre sin conexión, fuentes incluidas                                                                      |
-| **jsPDF con importación dinámica** | Arrastra `html2canvas` y `dompurify` (200 kB): no deben cargarse para ver un reloj                                                  |
-| **Vitest + fake-indexeddb**        | Probar el motor puro está bien, pero los bugs de verdad estaban en la cola de escritura y en la validación del JSON                 |
+| Pieza                              | Por qué                                                                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Svelte 5 + Vite**                | Arranque de 59 kB gzip y reactividad sin ceremonia. Descarté SvelteKit y Next: es una app de un usuario, sin SSR que aprovechar |
+| **TypeScript en `strict`**         | Con `noUncheckedIndexedAccess` y `noUnusedLocals`, que ya han cazado fallos reales                                              |
+| **Appwrite (UE)**                  | Base de datos, cuentas y login con Google sin montar un backend. Aislamiento por documento verificado con dos usuarios reales   |
+| **vite-plugin-pwa**                | Precache completo: la app abre sin conexión, fuentes incluidas                                                                  |
+| **jsPDF con importación dinámica** | Arrastra `html2canvas` y `dompurify` (200 kB): no deben cargarse para ver un reloj                                              |
+| **Vitest + fake-indexeddb**        | Probar el motor puro está bien, pero los bugs de verdad estaban en la cola de escritura y en la validación del JSON             |
 
 ## Calidad
 
 | Comprobación         | Resultado                                       |
 | -------------------- | ----------------------------------------------- |
-| Tests                | **112** en 4 ficheros                           |
+| Tests                | **116** en 5 ficheros                           |
 | `pnpm check`         | 0 errores, 0 avisos                             |
 | `pnpm lint` (oxlint) | 0 avisos                                        |
 | `pnpm build`         | OK, service worker con 18 recursos precacheados |
@@ -170,13 +172,26 @@ pnpm verificar      # lint + check + test + build, todo de una vez
 
 **En vivo: <https://fichaje-ferreteria.vercel.app>**
 
-Desplegado en **Vercel** con `vercel.json` (framework Vite, salida en `dist` y cabeceras de caché para el service worker). Cada push a `main` despliega solo. Al ser una app estática sin backend, cualquier hosting sirve.
+Desplegado en **Vercel** con `vercel.json` (framework Vite, salida en `dist` y cabeceras de caché para el service worker). Cada push a `main` despliega solo.
 
-Para instalarla en el móvil: abre la URL en el navegador y usa «Añadir a pantalla de inicio». A partir de ahí funciona sin conexión.
+Necesita cinco variables de entorno (`VITE_APPWRITE_*`); están en [`.env.example`](.env.example). El repositorio no lleva incrustado el proyecto de nadie: quien clone esto pone el suyo y aprovisiona el esquema con `node scripts/provisionar-appwrite.mjs`.
 
-## Privacidad
+Para instalarla en el móvil: abre la URL en el navegador y usa «Añadir a pantalla de inicio».
 
-Todo se guarda en IndexedDB, en el dispositivo. **No hay servidor, ni cuentas, ni analítica, ni una sola llamada de red en tiempo de ejecución** (`fetch`, `XMLHttpRequest`, `localStorage` y cookies: cero). La app pide almacenamiento persistente al navegador para que no borre el historial por falta de espacio, pero la única garantía real es la copia de seguridad: hazla de vez en cuando desde Exportar.
+## Cuentas y datos
+
+Entras con **Google** y tus horas viven en **Appwrite Cloud, región de Frankfurt (UE)**. Cada registro lleva sus propios permisos: solo tu usuario puede leerlo, actualizarlo o borrarlo.
+
+**Esto está verificado, no supuesto.** Con dos usuarios reales y sesiones reales, comprobé que:
+
+- B veía **1 documento** de A cuando el permiso de lectura estaba en la colección.
+- B ve **0 documentos** de A con el permiso solo en cada documento, y tampoco puede leerlo pidiéndolo por su identificador.
+
+El detalle importa porque Appwrite **suma** los permisos de colección a los de documento: poner `read("users")` en la colección anula el aislamiento por documento. La colección concede solo `create("users")`, y el resto se decide documento a documento. El script de aprovisionamiento lo deja así y corrige los permisos si encuentra una colección mal configurada.
+
+**Lo que no hay:** ni analítica, ni rastreadores, ni publicidad. La única red que se usa es la que necesita Appwrite para funcionar.
+
+**Lo que sí cambia respecto a la versión local:** para fichar hace falta conexión. Es la contrapartida de tener los datos en la nube y la app lo dice claro en pantalla cuando falla. Para llevarte el historial en un archivo tuyo, sigue estando Exportar.
 
 ## Documentación
 

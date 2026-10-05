@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { espacioUsado } from '../lib/db';
   import { app } from '../lib/estado.svelte';
   import { diasEntre, aFecha } from '../lib/fechas';
+  import { sesion } from '../lib/sesion.svelte';
 
   const DIAS = [
     { valor: 1, letra: 'L', nombre: 'lunes' },
@@ -13,14 +13,8 @@
     { valor: 7, letra: 'D', nombre: 'domingo' },
   ];
 
-  let uso = $state<number | null>(null);
-
-  $effect(() => {
-    void espacioUsado().then((valor) => (uso = valor));
-  });
-
   const diasSinCopia = $derived(
-    app.ultimaCopia === null ? null : diasEntre(aFecha(new Date(app.ultimaCopia)), app.hoy),
+    app.ultimaDescarga === null ? null : diasEntre(aFecha(new Date(app.ultimaDescarga)), app.hoy),
   );
 
   const copiaAtrasada = $derived(
@@ -149,11 +143,37 @@
 </section>
 
 <section class="seccion">
+  <h2>Cuenta</h2>
+  <div class="tarjeta">
+    <ul class="lista">
+      <li class="fila">
+        <span class="fila__principal">Sesión</span>
+        <span class="fila__cifra">{sesion.usuario?.email ?? '—'}</span>
+      </li>
+    </ul>
+    <p class="caption ayuda">
+      Tus horas se guardan en tu cuenta de Appwrite, no en este móvil. Cerrar sesión no borra nada:
+      puedes volver a entrar desde otro dispositivo.
+    </p>
+    <button
+      class="boton boton--fantasma"
+      type="button"
+      onclick={() => {
+        app.olvidar();
+        void sesion.salir();
+      }}
+    >
+      Cerrar sesión
+    </button>
+  </div>
+</section>
+
+<section class="seccion">
   <h2>Datos</h2>
   <div class="tarjeta">
     <ul class="lista">
       <li class="fila">
-        <span class="fila__principal">Última copia</span>
+        <span class="fila__principal">Última descarga</span>
         <span class="fila__cifra">
           {#if diasSinCopia === null}
             Nunca
@@ -171,17 +191,14 @@
     {#if copiaAtrasada}
       <div class="aviso aviso--atencion" role="status">
         {diasSinCopia === null
-          ? 'Todavía no has hecho ninguna copia de seguridad.'
-          : 'Llevas mucho sin hacer copia.'}
+          ? 'Todavía no has descargado ninguna copia.'
+          : 'Llevas mucho sin descargar una copia.'}
       </div>
     {/if}
 
     <p class="caption ayuda">
-      {#if app.copiaPersistente}
-        El navegador ha aceptado conservar los datos aunque falte espacio.
-      {:else}
-        El navegador no garantiza conservar los datos si se queda sin espacio. Haz copias.
-      {/if}
+      La nube ya guarda tu historial. Descargar una copia de vez en cuando te sirve para tenerlo
+      también en un archivo tuyo, en Exportar.
     </p>
   </div>
 </section>
@@ -195,14 +212,12 @@
         <span class="fila__cifra">0.1.0</span>
       </li>
       <li class="fila">
-        <span class="fila__principal">Funciona sin conexión</span>
-        <span class="chip chip--bien">Sí</span>
+        <span class="fila__principal">Necesita conexión para fichar</span>
+        <span class="chip chip--neutro">Sí</span>
       </li>
       <li class="fila">
-        <span class="fila__principal">Datos en este dispositivo</span>
-        <span class="fila__cifra numero">
-          {uso === null ? '—' : `${(uso / 1024 / 1024).toFixed(1).replace('.', ',')} MB`}
-        </span>
+        <span class="fila__principal">Dónde viven tus datos</span>
+        <span class="fila__cifra">Tu cuenta (Appwrite)</span>
       </li>
     </ul>
   </div>

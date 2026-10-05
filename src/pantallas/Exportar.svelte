@@ -1,6 +1,5 @@
 <script lang="ts">
   import { app } from '../lib/estado.svelte';
-  import { marcarCopiaHecha } from '../lib/db';
   import { capitalizar, formatearFechaLarga, formatearMinutos } from '../lib/formato';
   import {
     generarCSV,
@@ -162,10 +161,8 @@
       nombre,
       'Copia de seguridad',
     );
-    const instante = new Date().toISOString();
-    await marcarCopiaHecha(instante);
-    app.ultimaCopia = instante;
-    aviso = 'Copia exportada y registrada.';
+    app.marcarDescarga();
+    aviso = 'Copia descargada.';
   }
 
   async function restaurarCopia(evento: Event): Promise<void> {
@@ -189,18 +186,18 @@
       return;
     }
 
-    // Se aplica en una transacción: si algo falla, no queda media copia dentro.
-    const restaurada = await app.importar(lectura.copia.jornadas, lectura.copia.ajustes);
-    if (!restaurada) {
+    const escritas = await app.importar(lectura.copia.jornadas, lectura.copia.ajustes);
+    if (escritas === 0) {
       // El detalle del fallo ya lo muestra el banner de error del shell.
       aviso = null;
       return;
     }
 
-    const cuantas = lectura.copia.jornadas.length;
-    const resumenImportacion = `Copia restaurada: ${cuantas} ${
-      cuantas === 1 ? 'jornada' : 'jornadas'
-    }.`;
+    const total = lectura.copia.jornadas.length;
+    const resumenImportacion =
+      escritas === total
+        ? `Copia restaurada: ${escritas} ${escritas === 1 ? 'jornada' : 'jornadas'}.`
+        : `Se han restaurado ${escritas} de ${total} jornadas. Vuelve a importar la copia para completar el resto.`;
     aviso = [resumenImportacion, ...lectura.copia.avisos].join(' ');
   }
 </script>
@@ -269,10 +266,11 @@
 {/if}
 
 <section class="seccion">
-  <h2>Copia de seguridad completa</h2>
+  <h2>Copia en un archivo</h2>
   <div class="tarjeta">
     <p class="caption ayuda">
-      Un archivo con todo tu historial y tus ajustes, para restaurarlo en este u otro dispositivo.
+      Tus horas ya están en tu cuenta. Esto descarga además un archivo con todo el historial y los
+      ajustes, para llevártelo a otro sitio o guardarlo aparte.
     </p>
     <div class="acciones acciones--dos">
       <button class="boton boton--fantasma" type="button" onclick={exportarCopia}
@@ -283,10 +281,10 @@
       </button>
     </div>
     <p class="caption ayuda">
-      {#if app.ultimaCopia === null}
-        Todavía no has hecho ninguna copia.
+      {#if app.ultimaDescarga === null}
+        Todavía no has descargado ninguna copia.
       {:else}
-        Última copia: {capitalizar(formatearFechaLarga(app.ultimaCopia.slice(0, 10)))}
+        Última descarga: {capitalizar(formatearFechaLarga(app.ultimaDescarga.slice(0, 10)))}
       {/if}
     </p>
     <input

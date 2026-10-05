@@ -1,13 +1,17 @@
 /**
  * Estado global de la aplicación.
  *
- * Todo lo que la interfaz muestra sale de aquí, y todo lo que aquí se calcula
- * sale del motor puro de `calculo.ts`. La hora actual es estado reactivo para
- * que el contador avance solo, y se refresca cada segundo únicamente mientras
- * hay un tramo abierto; en reposo basta con refrescar cada medio minuto.
+ * La **nube es la fuente de la verdad**: al entrar se descarga el historial de
+ * Appwrite y todo lo que se escribe va allí. Lo que hay en memoria es una copia
+ * de lo que hay en el servidor, y el motor puro de `calculo.ts` calcula sobre
+ * ella igual que antes.
  *
- * Las escrituras pasan por un candado: el botón de fichar es el más pulsado de
- * la app y una doble pulsación no puede duplicar ni perder tramos.
+ * Dos cosas se mantienen del diseño anterior y siguen siendo necesarias: el
+ * candado de escritura (el botón de fichar es el más pulsado de la app y una
+ * doble pulsación no puede duplicar ni perder tramos) y las reglas del motor.
+ *
+ * Sin conexión no se puede fichar: es la contrapartida de tener los datos en la
+ * nube, y la app lo dice claramente en vez de fingir que ha guardado.
  */
 
 import {
@@ -24,17 +28,16 @@ import {
   type SaldoExtras,
   type Situacion,
 } from './calculo';
-import {
-  borrarJornada,
-  cargarTodo,
-  guardarAjustes,
-  guardarJornada,
-  guardarObjetivosSemanas,
-  importarCopia,
-  leerObjetivosSemanas,
-  pedirAlmacenamientoPersistente,
-} from './db';
 import { aFecha } from './fechas';
+import {
+  actualizarJornada,
+  borrarJornada as borrarJornadaNube,
+  crearJornada,
+  descargarAjustes,
+  descargarJornadas,
+  guardarAjustes as guardarAjustesNube,
+} from './nube';
+import { sesion } from './sesion.svelte';
 import {
   AJUSTES_POR_DEFECTO,
   type Ajustes,
@@ -44,9 +47,18 @@ import {
 } from './tipos';
 
 const TICKS_PARA_REPOSO = 30;
+const CLAVE_ULTIMA_DESCARGA = 'fichaje.ultimaDescarga';
 
 function nuevoId(): string {
   return crypto.randomUUID();
+}
+
+function leerUltimaDescarga(): string | null {
+  try {
+    return localStorage.getItem(CLAVE_ULTIMA_DESCARGA);
+  } catch {
+    return null;
+  }
 }
 
 class EstadoApp {
@@ -54,24 +66,29 @@ class EstadoApp {
   ajustes = $state<Ajustes>({ ...AJUSTES_POR_DEFECTO });
   /** Instante actual en milisegundos. Mueve el contador en vivo. */
   ahora = $state(Date.now());
+  /** `true` cuando los datos del usuario ya están descargados. */
   cargado = $state(false);
-  copiaPersistente = $state(false);
-  /** ISO de la última copia de seguridad, o null si nunca se ha hecho. */
-  ultimaCopia = $state<string | null>(null);
-  /** Número de escrituras pendientes en la cola. */
-  private enCola = $state(0);
-  /** `true` mientras hay alguna escritura pendiente: la interfaz desactiva los botones. */
-  guardando = $derived(this.enCola > 0);
+  /** ISO de la última descarga del historial, o null. */
+  ultimaDescarga = $state<string | null>(leerUltimaDescarga());
   /** Error visible para el usuario, o null. */
   error = $state<string | null>(null);
   /** Aviso no bloqueante, por ejemplo del resultado de una importación. */
   aviso = $state<string | null>(null);
+  /** Número de escrituras pendientes en la cola. */
+  private enCola = $state(0);
+  /** `true` mientras hay alguna escritura pendiente: la interfaz desactiva los botones. */
+  guardando = $derived(this.enCola > 0);
+
+  /** Id del documento de Appwrite de cada fecha. */
+  private idsPorFecha = new Map<string, string>();
+  /** Id del documento de ajustes del usuario. */
+  private idAjustes: string | null = null;
   /** Objetivo congelado de cada semana cerrada, por su lunes. */
   private objetivosSemanas = $state<ObjetivosCongelados>({});
 
   private temporizador: ReturnType<typeof setInterval> | null = null;
   private ticks = 0;
-  /** Cola de escrituras: garantiza que IndexedDB nunca recibe dos a la vez. */
+  /** Cola de escrituras: garantiza que la nube nunca recibe dos a la vez. */
   private cola: Promise<void> = Promise.resolve();
 
   /** Fecha de hoy, 'YYYY-MM-DD'. */
@@ -104,31 +121,10 @@ class EstadoApp {
   /** Tramos abiertos de días anteriores, pendientes de corregir. */
   pendientes = $derived(olvidos(this.jornadas, this.hoy));
 
-  async iniciar(): Promise<void> {
-    // El temporizador se arranca antes de cualquier espera: si la base de datos
-    // falla, el reloj sigue vivo y la app no se queda congelada.
+  /** Arranca el reloj en vivo. No toca la red. */
+  iniciarReloj(): void {
+    if (this.temporizador !== null) return;
     this.temporizador = setInterval(() => this.tick(), 1000);
-
-    try {
-      const { jornadas, ajustes, ultimaCopia, descartadas } = await cargarTodo();
-      this.jornadas = jornadas;
-      this.ajustes = ajustes;
-      this.ultimaCopia = ultimaCopia;
-      await this.congelarSemanasCerradas();
-      if (descartadas > 0) {
-        this.aviso = `Se han descartado ${descartadas} ${
-          descartadas === 1 ? 'registro dañado' : 'registros dañados'
-        } al cargar.`;
-      }
-    } catch {
-      this.error =
-        'No se han podido leer los datos de este dispositivo. Puedes seguir fichando, pero revisa el almacenamiento del navegador.';
-    } finally {
-      this.cargado = true;
-      this.ahora = Date.now();
-    }
-
-    this.copiaPersistente = await pedirAlmacenamientoPersistente();
   }
 
   detener(): void {
@@ -148,6 +144,55 @@ class EstadoApp {
     }
   }
 
+  /** Descarga el historial del usuario que ha entrado. */
+  async cargar(): Promise<void> {
+    const usuario = sesion.usuario;
+    if (usuario === null) return;
+
+    this.cargado = false;
+    this.error = null;
+    try {
+      const descarga = await descargarJornadas(usuario.id);
+      this.jornadas = descarga.jornadas;
+      this.idsPorFecha = descarga.idsPorFecha;
+
+      const nube = await descargarAjustes(usuario.id);
+      if (nube === null) {
+        this.ajustes = { ...AJUSTES_POR_DEFECTO };
+        this.idAjustes = await guardarAjustesNube(this.ajustes, {}, usuario.id, null);
+      } else {
+        this.ajustes = nube.ajustes;
+        this.objetivosSemanas = nube.objetivosSemanas;
+        this.idAjustes = nube.idDocumento;
+      }
+
+      if (descarga.descartados > 0) {
+        this.aviso = `Se han descartado ${descarga.descartados} ${
+          descarga.descartados === 1 ? 'registro dañado' : 'registros dañados'
+        } al descargar.`;
+      }
+
+      await this.congelarSemanasCerradas();
+      this.ahora = Date.now();
+    } catch {
+      this.error = 'No se ha podido descargar tu historial. Comprueba la conexión.';
+    } finally {
+      this.cargado = true;
+    }
+  }
+
+  /** Vacía lo cargado al cerrar sesión. */
+  olvidar(): void {
+    this.jornadas = [];
+    this.ajustes = { ...AJUSTES_POR_DEFECTO };
+    this.objetivosSemanas = {};
+    this.idsPorFecha = new Map();
+    this.idAjustes = null;
+    this.cargado = false;
+    this.error = null;
+    this.aviso = null;
+  }
+
   /**
    * Encola una escritura para que nunca haya dos a la vez.
    *
@@ -165,7 +210,9 @@ class EstadoApp {
         this.error = null;
         return true;
       } catch {
-        this.error = 'No se ha podido guardar el cambio en este dispositivo.';
+        this.error = navigator.onLine
+          ? 'No se ha podido guardar en la nube. Inténtalo otra vez.'
+          : 'Sin conexión: no se ha podido guardar. Tu cambio no se ha aplicado.';
         return false;
       } finally {
         this.enCola -= 1;
@@ -179,34 +226,51 @@ class EstadoApp {
     return tarea;
   }
 
+  /** Guarda la jornada en la nube y, si va bien, la refleja en memoria. */
+  private async persistir(jornada: Jornada): Promise<void> {
+    const usuario = sesion.usuario;
+    if (usuario === null) throw new Error('Sin sesión');
+
+    const idExistente = this.idsPorFecha.get(jornada.fecha);
+    if (idExistente === undefined) {
+      const id = await crearJornada(jornada, usuario.id);
+      this.idsPorFecha.set(jornada.fecha, id);
+    } else {
+      await actualizarJornada(idExistente, jornada, usuario.id);
+    }
+
+    const resto = this.jornadas.filter((j) => j.fecha !== jornada.fecha);
+    this.jornadas = [...resto, jornada].sort((a, b) => a.fecha.localeCompare(b.fecha));
+  }
+
+  private async persistirAjustes(): Promise<void> {
+    const usuario = sesion.usuario;
+    if (usuario === null) throw new Error('Sin sesión');
+    this.idAjustes = await guardarAjustesNube(
+      this.ajustes,
+      this.objetivosSemanas,
+      usuario.id,
+      this.idAjustes,
+    );
+  }
+
   /**
    * Fija el objetivo de las semanas ya cerradas que aún no lo tuvieran.
    * A partir de ahí, cambiar el límite semanal afecta a las semanas siguientes,
    * no al saldo que ya está apuntado.
    */
-  private async congelarSemanasCerradas(): Promise<void> {
-    const guardados = await leerObjetivosSemanas();
+  async congelarSemanasCerradas(): Promise<void> {
     const pendientes = semanasSinCongelar(
       this.jornadas,
       this.ajustes,
       this.hoy,
       this.ahora,
-      guardados,
+      this.objetivosSemanas,
     );
+    if (Object.keys(pendientes).length === 0) return;
 
-    if (Object.keys(pendientes).length > 0) {
-      const juntos = { ...guardados, ...pendientes };
-      await guardarObjetivosSemanas(juntos);
-      this.objetivosSemanas = juntos;
-      return;
-    }
-    this.objetivosSemanas = guardados;
-  }
-
-  /** Aplica una jornada en memoria, sustituyendo la del mismo día. */
-  private aplicar(jornada: Jornada): void {
-    const resto = this.jornadas.filter((j) => j.fecha !== jornada.fecha);
-    this.jornadas = [...resto, jornada].sort((a, b) => a.fecha.localeCompare(b.fecha));
+    this.objetivosSemanas = { ...this.objetivosSemanas, ...pendientes };
+    await this.persistirAjustes();
   }
 
   /** Abre un tramo nuevo (fichar entrada o reanudar tras una pausa). */
@@ -223,9 +287,7 @@ class EstadoApp {
       if (situacionActual(jornada) === 'trabajando') return;
 
       const tramo: Tramo = { id: nuevoId(), inicio: instante, fin: null };
-      const actualizada: Jornada = { ...jornada, tramos: [...jornada.tramos, tramo] };
-      await guardarJornada($state.snapshot(actualizada));
-      this.aplicar($state.snapshot(actualizada));
+      await this.persistir({ ...jornada, tramos: [...jornada.tramos, tramo] });
       this.ahora = instante;
     });
   }
@@ -247,27 +309,26 @@ class EstadoApp {
       if (abierto === undefined) return;
 
       const instante = Math.max(Date.now(), abierto.inicio);
-      const actualizada: Jornada = {
+      await this.persistir({
         ...jornada,
         tramos: jornada.tramos.map((t) => (t.id === abierto.id ? { ...t, fin: instante } : t)),
-      };
-      await guardarJornada($state.snapshot(actualizada));
-      this.aplicar($state.snapshot(actualizada));
+      });
       this.ahora = instante;
     });
   }
 
   /** Guarda una jornada completa (alta o corrección manual). */
   guardar(jornada: Jornada): Promise<boolean> {
-    return this.encolar(async () => {
-      await guardarJornada($state.snapshot(jornada));
-      this.aplicar($state.snapshot(jornada));
-    });
+    return this.encolar(() => this.persistir(jornada));
   }
 
   eliminar(fecha: string): Promise<boolean> {
     return this.encolar(async () => {
-      await borrarJornada(fecha);
+      const id = this.idsPorFecha.get(fecha);
+      if (id === undefined) return;
+
+      await borrarJornadaNube(id);
+      this.idsPorFecha.delete(fecha);
       this.jornadas = this.jornadas.filter((j) => j.fecha !== fecha);
     });
   }
@@ -275,28 +336,47 @@ class EstadoApp {
   /** Cambia uno o varios ajustes y los persiste. */
   actualizarAjustes(cambios: Partial<Ajustes>): Promise<boolean> {
     return this.encolar(async () => {
-      const siguientes = { ...this.ajustes, ...cambios };
-      await guardarAjustes($state.snapshot(siguientes));
-      this.ajustes = $state.snapshot(siguientes);
+      const anteriores = this.ajustes;
+      this.ajustes = { ...this.ajustes, ...cambios };
+      try {
+        await this.persistirAjustes();
+      } catch (fallo) {
+        this.ajustes = anteriores;
+        throw fallo;
+      }
     });
   }
 
   /**
-   * Restaura una copia ya validada, en una transacción, y recarga el estado.
-   * Devuelve `false` si la transacción no se pudo completar, para que la
-   * interfaz no anuncie una restauración que no ha ocurrido.
+   * Vuelca en la nube un historial ya validado (importación de una copia).
+   *
+   * Appwrite no tiene transacciones entre documentos, así que la importación es
+   * **idempotente** en lugar de atómica: cada jornada se escribe por su fecha y
+   * repetirla completa lo que falte. Se devuelve cuántas se han escrito.
    */
-  importar(jornadas: Jornada[], ajustes: Ajustes | null): Promise<boolean> {
+  importar(jornadas: Jornada[], ajustes: Ajustes | null): Promise<number> {
+    let escritas = 0;
     return this.encolar(async () => {
-      await importarCopia(
-        $state.snapshot(jornadas),
-        ajustes === null ? null : $state.snapshot(ajustes),
-      );
-      const recargado = await cargarTodo();
-      this.jornadas = recargado.jornadas;
-      this.ajustes = recargado.ajustes;
-      await this.congelarSemanasCerradas();
-    });
+      for (const jornada of jornadas) {
+        await this.persistir(jornada);
+        escritas += 1;
+      }
+      if (ajustes !== null) {
+        this.ajustes = ajustes;
+        await this.persistirAjustes();
+      }
+    }).then(() => escritas);
+  }
+
+  /** Marca que se ha descargado una copia del historial. */
+  marcarDescarga(): void {
+    const instante = new Date().toISOString();
+    this.ultimaDescarga = instante;
+    try {
+      localStorage.setItem(CLAVE_ULTIMA_DESCARGA, instante);
+    } catch {
+      // Sin localStorage la marca no persiste; no es grave.
+    }
   }
 }
 
