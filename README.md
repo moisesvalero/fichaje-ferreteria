@@ -190,19 +190,23 @@ Entras con **Google** y tus horas viven en **Appwrite Cloud, región de Frankfur
 
 El detalle importa porque Appwrite **suma** los permisos de colección a los de documento: poner `read("users")` en la colección anula el aislamiento por documento. La colección concede solo `create("users")`, y el resto se decide documento a documento. El script de aprovisionamiento lo deja así y corrige los permisos si encuentra una colección mal configurada.
 
-### Por qué las llamadas pasan por `/appwrite`
+### Iniciar sesión, cookies y el proxy `/appwrite`
 
-Appwrite guarda la sesión en una cookie marcada con **su** dominio:
+Aquí se juntaron **tres** problemas que solo salen al probarlo en un navegador de verdad. Los tres están resueltos y quedan escritos, porque son de los que vuelven.
+
+**1. La cookie de sesión es de terceros.** Appwrite la marca con su dominio:
 
 ```
 set-cookie: a_session_xxx=...; domain=.fra.cloud.appwrite.io; secure; HttpOnly; SameSite=None
 ```
 
-Para la app esa cookie es de terceros y, además, el navegador la rechaza porque el dominio no coincide con el suyo. El resultado es un bucle clásico: entras con Google y vuelves al botón de login, tanto en Safari y iOS (que bloquean terceros por defecto) como en Chrome con el bloqueo activado. Comprobado en un navegador real con el bloqueo puesto.
+Para la app es de terceros, así que Safari y iOS (que las bloquean por defecto) y Chrome con el bloqueo activado la descartan: entras con Google y vuelves al botón. Por eso las llamadas de datos salen por **nuestro propio dominio**: [`api/appwrite.ts`](api/appwrite.ts) es un proxy que reenvía a Appwrite y le quita el `domain=` a esa cookie, para que se guarde como de primera parte. Un `rewrite` de Vercel no sirve, porque reenvía la cabecera tal cual: hace falta código. En desarrollo hace lo mismo el proxy de Vite.
 
-La solución es que **todas las llamadas salgan por nuestro propio dominio**: [`api/appwrite.ts`](api/appwrite.ts) es un proxy que reenvía a Appwrite y **reescribe esa cabecera** quitando el `domain=`, así que la cookie se guarda como de primera parte. Un `rewrite` de Vercel no vale, porque reenvía la cabecera tal cual: hace falta código. En desarrollo hace lo mismo el proxy de Vite.
+**2. El arranque del login tiene que ir directo a Appwrite.** Es la única llamada que no pasa por el proxy, y el motivo es otra cookie: al empezar el login, Appwrite deja `a_oauth2_<proyecto>` con el estado de la operación, y **no lleva `domain=`**, así que el navegador la asigna al host que responde. Si el arranque saliera por el proxy, esa cookie se quedaría en nuestro dominio; la vuelta de Google llega a Appwrite, que no la recibiría, no podría validar el estado y mandaría al usuario al aviso de fallo. De eso se encarga [`abrirLoginConGoogle`](src/lib/appwrite.ts), que apunta el cliente a Appwrite solo para ese paso.
 
-Efectos secundarios, y son buenos: no hay CORS, y el project ID sigue siendo lo único que viaja en el cliente (ninguna clave de API).
+**3. El service worker no debe tocar nada de esto.** Su `navigateFallback` contestaba con el HTML de la app a _cualquier_ navegación, incluida la del login, así que el navegador se quedaba en esa URL sin llegar a abrir Google. `/appwrite` y `/api` están excluidas en `navigateFallbackDenylist`.
+
+Efectos secundarios del proxy, y son buenos: no hay CORS, y en el cliente sigue sin haber ninguna clave de API.
 
 **Lo que no hay:** ni analítica, ni rastreadores, ni publicidad. La única red que se usa es la que necesita Appwrite para funcionar.
 

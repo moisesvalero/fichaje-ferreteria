@@ -25,15 +25,16 @@ Cuando empecé a trabajar quería controlar que hacía mis **8 h al día y 40 h 
 
 ## Decisiones técnicas
 
-| Decisión                          | Alternativa descartada             | Por qué                                                                                                |
-| --------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| **Svelte 5 + Vite**               | React, SvelteKit, Next             | No hay backend ni SEO: el SSR solo añade piezas móviles. Svelte da un arranque de 59 kB gzip           |
-| **Appwrite (UE)**                 | Dexie sobre IndexedDB, SQLite WASM | Base de datos, cuentas y login sin montar backend. Dexie se descartó al pasar a la nube (decisión 12)  |
-| **Sin router**                    | SvelteKit, svelte-spa-router       | Cinco pestañas y una hoja modal no justifican una dependencia de enrutado                              |
-| **PDF diferido**                  | Importar jsPDF arriba              | jsPDF arrastra `html2canvas` y `dompurify`: 200 kB que no deben cargarse para ver un reloj             |
-| **CSS propio con tokens**         | Tailwind                           | Seis pantallas con una jerarquía muy marcada: las variables CSS dan control exacto y cero dependencias |
-| **Reglas en un módulo puro**      | Lógica en los componentes          | El motor de cálculo es lo único que puede mentir; aislado y con 116 tests, es verificable              |
-| **La nube simulada en los tests** | Probar solo lo puro                | La cola de escritura y el candado de reentrada del botón de fichar son donde estaban los bugs reales   |
+| Decisión                          | Alternativa descartada             | Por qué                                                                                                                                                                                                        |
+| --------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Svelte 5 + Vite**               | React, SvelteKit, Next             | No hay backend ni SEO: el SSR solo añade piezas móviles. Svelte da un arranque de 59 kB gzip                                                                                                                   |
+| **Appwrite (UE)**                 | Dexie sobre IndexedDB, SQLite WASM | Base de datos, cuentas y login sin montar backend. Dexie se descartó al pasar a la nube (decisión 12)                                                                                                          |
+| **Proxy `/appwrite` propio**      | Endpoint directo de Appwrite       | La cookie de sesión de Appwrite es de terceros y Safari/Chrome la bloquean; por nuestro dominio es de primera parte. El arranque del login va directo a Appwrite porque su cookie de estado no lleva `domain=` |
+| **Sin router**                    | SvelteKit, svelte-spa-router       | Cinco pestañas y una hoja modal no justifican una dependencia de enrutado                                                                                                                                      |
+| **PDF diferido**                  | Importar jsPDF arriba              | jsPDF arrastra `html2canvas` y `dompurify`: 200 kB que no deben cargarse para ver un reloj                                                                                                                     |
+| **CSS propio con tokens**         | Tailwind                           | Seis pantallas con una jerarquía muy marcada: las variables CSS dan control exacto y cero dependencias                                                                                                         |
+| **Reglas en un módulo puro**      | Lógica en los componentes          | El motor de cálculo es lo único que puede mentir; aislado y con 116 tests, es verificable                                                                                                                      |
+| **La nube simulada en los tests** | Probar solo lo puro                | La cola de escritura y el candado de reentrada del botón de fichar son donde estaban los bugs reales                                                                                                           |
 
 ## Cambio de la decisión 12: de local a la nube
 
@@ -48,6 +49,18 @@ La decisión original era **todo en el dispositivo, sin cuentas ni nube**. Se ca
 **Cómo se protege:** login con Google, y cada documento con permisos solo para su dueño. Comprobado con dos usuarios reales: uno veía un documento del otro cuando el permiso de lectura estaba en la colección, y dejó de verlo al moverlo al documento. Appwrite suma los permisos de colección a los de documento, así que la colección concede únicamente `create`.
 
 **Alternativa que se descartó:** sincronización local-first (seguir funcionando sin conexión y subir después). Es mejor para el uso real, pero exige resolver conflictos entre dispositivos. Si algún día molesta la falta de cobertura, ese es el camino, y no hay que rehacer el motor: `calculo.ts` es puro y no sabe de dónde vienen los datos.
+
+## El login: tres fallos encadenados
+
+El login con Google no funcionaba y costó tres arreglos, porque cada uno tapaba al siguiente. Se dejan aquí porque los tres son de los que vuelven si alguien toca estas piezas sin saber por qué están así. El detalle técnico está en el README.
+
+1. **La cookie de sesión es de terceros.** Appwrite la marca con su dominio y Safari, iOS y Chrome (con el bloqueo activado) la descartan. Se resolvió pasando las llamadas por un proxy en nuestro dominio que le quita el `domain=`.
+2. **El service worker se comía la navegación del login.** Su `navigateFallback` respondía con el HTML de la app a cualquier navegación, incluida la del login: el navegador no llegaba ni a abrir Google. Se excluyeron `/appwrite` y `/api`.
+3. **La cookie de estado del login se quedaba en el sitio equivocado.** `a_oauth2_<proyecto>` no lleva `domain=`, así que el navegador la asigna al host que responde: por el proxy se quedaba en el nuestro y la vuelta de Google (que llega a Appwrite) no podía validarla. Por eso el arranque del login va directo a Appwrite, y es la única llamada que no pasa por el proxy.
+
+Lo que se probó y **no** servía, para no repetirlo: el dominio propio de Appwrite (es de pago y la clave del proyecto no tiene permisos para configurarlo), pasar la sesión por cabecera (`X-Appwrite-Session`, porque Appwrite devuelve el secreto de sesión vacío) y un `rewrite` de Vercel (reenvía el `Set-Cookie` tal cual, sin poder quitarle el `domain=`).
+
+Todo se verificó en un navegador real, con el bloqueo de cookies de terceros activado y con dos usuarios temporales, comprobando además dónde queda cada cookie.
 
 ## Lo que queda fuera de alcance (a propósito)
 
