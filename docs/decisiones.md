@@ -4,7 +4,7 @@ Este documento recoge las decisiones que se cerraron **antes de escribir una lí
 
 ## El problema
 
-Empezaba a trabajar en una ferretería y quería controlar que hacía mis **8 h al día y 40 h a la semana, ni más ni menos**. Nada de nómina ni de reclamaciones: quería saber cuánto hacía de más y tener constancia.
+Cuando empecé a trabajar quería controlar que hacía mis **8 h al día y 40 h a la semana, ni más ni menos**. Nada de nómina ni de reclamaciones: quería saber cuánto hacía de más y tener constancia.
 
 ## Decisiones funcionales
 
@@ -12,7 +12,7 @@ Empezaba a trabajar en una ferretería y quería controlar que hacía mis **8 h 
 | --- | -------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | 1   | Qué es "extra"       | **Semanal**: solo lo que supere el objetivo de esa semana            | Si un día haces 9 h y otro 7 h, la semana cuadra. Lo que importa es el cómputo semanal    |
 | 2   | Saldo de extras      | **Solo constancia**: no se compensa ni se cobra                      | El objetivo es autocontrol, no reclamar                                                   |
-| 3   | Jornada              | Partida en **tramos**; el parón de comer **no computa**              | Es una ferretería: mañana, parón, tarde                                                   |
+| 3   | Jornada              | Partida en **tramos**; el parón de comer **no computa**              | Es una jornada partida: mañana, parón, tarde                                              |
 | 4   | Objetivo semanal     | Se **prorratea** a los días que de verdad computan                   | Un festivo baja el objetivo a 32 h; si no, la app diría que vas -8 h y el número mentiría |
 | 5   | Aviso                | **Dentro de la app**, muy visible, sin permisos                      | Una PWA sin servidor no puede despertarse con la app cerrada; prometerlo sería mentir     |
 | 6   | Olvidos              | La app **pregunta**, nunca inventa horas                             | Si el sistema autocierra a una hora inventada, el dato deja de ser tuyo                   |

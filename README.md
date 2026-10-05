@@ -1,13 +1,13 @@
 <div align="center">
 
-# Fichaje Ferretería
+# Jornada
 
 **PWA personal para controlar tus horas de trabajo. 8 h al día y 40 h a la semana, ni más ni menos.**
 
 Entras con Google y tus horas se guardan en tu cuenta, así que no las pierdes si cambias de móvil.
 
-[![Demo](https://img.shields.io/badge/demo-fichaje--ferreteria.vercel.app-000000?logo=vercel&logoColor=white)](https://fichaje-ferreteria.vercel.app)
-[![CI](https://github.com/moisesvalero/fichaje-ferreteria/actions/workflows/ci.yml/badge.svg)](https://github.com/moisesvalero/fichaje-ferreteria/actions/workflows/ci.yml)
+[![Demo](https://img.shields.io/badge/demo-jornada.moisesvalero.es-000000?logo=vercel&logoColor=white)](https://jornada.moisesvalero.es)
+[![CI](https://github.com/moisesvalero/jornada/actions/workflows/ci.yml/badge.svg)](https://github.com/moisesvalero/jornada/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2563EB.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-116%20passing-15803D.svg)](src/lib)
 [![Svelte 5](https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white)](https://svelte.dev)
@@ -24,7 +24,7 @@ Entras con Google y tus horas se guardan en tu cuenta, así que no las pierdes s
 
 ## El problema
 
-Empecé a trabajar en una ferretería y quería controlar que hacía mis **8 h al día y 40 h a la semana, ni más ni menos**. No para reclamar nada, solo para saber cuánto hacía de más y tener constancia.
+Cuando empecé a trabajar quería controlar que hacía mis **8 h al día y 40 h a la semana, ni más ni menos**. No para reclamar nada, solo para saber cuánto hacía de más y tener constancia.
 
 Lo que había no servía: las apps de fichaje o son de empresa (con cuenta y jefe) o son hojas de cálculo que abandonas a la semana. Así que decidí construirme una, con tres condiciones: **que los datos sean míos y estén a salvo, que los límites sean configurables y que instalada en el móvil parezca una app de verdad**.
 
@@ -170,7 +170,7 @@ pnpm verificar      # lint + check + test + build, todo de una vez
 
 ## Despliegue
 
-**En vivo: <https://fichaje-ferreteria.vercel.app>**
+**En vivo: <https://jornada.moisesvalero.es>**
 
 Desplegado en **Vercel** con `vercel.json` (framework Vite, salida en `dist` y cabeceras de caché para el service worker). Cada push a `main` despliega solo.
 

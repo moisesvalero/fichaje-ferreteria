@@ -226,7 +226,7 @@ describe('leerCopia: validación profunda', () => {
     expect(lectura.ok).toBe(false);
   });
 
-  it('rechaza un JSON que no es una copia de Fichaje', () => {
+  it('rechaza un JSON que no es una copia de Jornada', () => {
     expect(leerCopia('{"foo":1}').ok).toBe(false);
     expect(leerCopia('{"jornadas":"nope"}').ok).toBe(false);
     expect(leerCopia('null').ok).toBe(false);

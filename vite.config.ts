@@ -19,8 +19,8 @@ export default defineConfig({
         'splash/*.png',
       ],
       manifest: {
-        name: 'Fichaje Ferretería',
-        short_name: 'Fichaje',
+        name: 'Jornada',
+        short_name: 'Jornada',
         description: 'Control personal de tus horas de trabajo. Sin cuentas, sin nube.',
         lang: 'es',
         dir: 'ltr',

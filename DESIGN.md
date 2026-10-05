@@ -1,10 +1,10 @@
-# Design System: Fichaje Ferretería
+# Design System: Jornada
 
 Especificación vinculante extraída del set aprobado en Stitch Canvas ([proyecto `4562017147504546864`](https://stitch.google.com/projects/4562017147504546864)). Cualquier pantalla nueva se genera y se implementa respetando este documento.
 
 ## 1. Visual Theme & Atmosphere
 
-Herramienta personal de fichaje para una ferretería, usada de pie y con prisa. La referencia emocional es **una app bancaria bien hecha**: superficie clara casi blanca, tarjetas blancas con borde de un píxel, sombras apenas perceptibles, mucho aire y jerarquía tipográfica fuerte. Sin degradados, sin ilustraciones, sin imágenes decorativas, sin 3D, sin glassmorphism.
+Herramienta personal de fichaje, usada de pie y con prisa. La referencia emocional es **una app bancaria bien hecha**: superficie clara casi blanca, tarjetas blancas con borde de un píxel, sombras apenas perceptibles, mucho aire y jerarquía tipográfica fuerte. Sin degradados, sin ilustraciones, sin imágenes decorativas, sin 3D, sin glassmorphism.
 
 La disciplina cromática es deliberada: **el color escasea y por eso informa**. El azul está reservado a la acción y la navegación; el resto de colores aparecen solo en las dos o tres cifras que deciden algo. El resultado debe poder leerse en cinco segundos a plena luz.
 
@@ -79,7 +79,7 @@ Nota de implementación: el design system declara `IBM Plex Sans` para etiquetas
 ## 6. Design System Notes for Stitch Generation
 
 - **Atmosphere keywords**: sober banking-app clarity, near-white canvas, hairline-bordered white cards, whisper-soft elevation, generous whitespace, restrained single blue accent, muted semantic states, tabular figures.
-- **Canonical colour names**: Azul Fichaje `#2563EB`, Lienzo `#F8FAFC`, Hairline `#E2E8F0`, Tinta `#0F172A`, Tinta Secundaria `#475569`, Verde `#15803D`, Ámbar `#B45309`, Rojo `#B91C1C`, Neutro `#64748B`.
+- **Canonical colour names**: Azul Jornada `#2563EB`, Lienzo `#F8FAFC`, Hairline `#E2E8F0`, Tinta `#0F172A`, Tinta Secundaria `#475569`, Verde `#15803D`, Ámbar `#B45309`, Rojo `#B91C1C`, Neutro `#556275`.
 - **Component prompts**:
   - "Pantalla móvil en español con una tarjeta de estado a pantalla completa sobre fondo casi blanco, una etiqueta en mayúsculas, una cifra enorme en Inter con cifras tabulares y debajo un botón primario azul de 88 píxeles de alto con esquinas de 12 píxeles."
   - "Lista de días agrupada por semana con separadores hairline, la fecha a la izquierda, una cifra tabular a la derecha, chips de estado en pastilla con texto explícito y puntos de color apagados."

@@ -232,10 +232,10 @@ console.log(`Proyecto ${PROJECT} · base de datos \`${DATABASE}\`\n`);
 
 console.log('Plataformas (sin esto el navegador recibe 400 por CORS):');
 console.log(
-  `  fichaje-ferreteria.vercel.app  →  ${await asegurarPlataforma('fichaje-ferreteria.vercel.app', 'fichaje-vercel')}`,
+  `  jornada.moisesvalero.es  →  ${await asegurarPlataforma('jornada.moisesvalero.es', 'jornada-web')}`,
 );
 console.log(
-  `  localhost                      →  ${await asegurarPlataforma('localhost', 'fichaje-local')}`,
+  `  localhost                 →  ${await asegurarPlataforma('localhost', 'jornada-local')}`,
 );
 
 console.log('\nColecciones:');

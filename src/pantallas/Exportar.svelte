@@ -67,7 +67,7 @@
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
     doc.setTextColor(15, 23, 42);
-    doc.text('Fichaje — Resumen personal de horas', margen, y);
+    doc.text('Jornada — Resumen personal de horas', margen, y);
     y += 8;
 
     doc.setFont('helvetica', 'normal');

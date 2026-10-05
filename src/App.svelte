@@ -42,7 +42,7 @@
   ];
 
   const TITULOS: Record<Vista, string> = {
-    hoy: 'Fichaje',
+    hoy: 'Jornada',
     semana: 'Semana',
     historial: 'Historial',
     exportar: 'Exportar',

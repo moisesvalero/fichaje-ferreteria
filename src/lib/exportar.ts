@@ -367,7 +367,7 @@ export function leerCopia(texto: string): LecturaCopia {
   }
 
   if (typeof datos !== 'object' || datos === null) {
-    return { ok: false, error: 'El archivo no tiene el formato de una copia de Fichaje.' };
+    return { ok: false, error: 'El archivo no tiene el formato de una copia de Jornada.' };
   }
 
   const bruto = datos as Partial<CopiaSeguridad>;

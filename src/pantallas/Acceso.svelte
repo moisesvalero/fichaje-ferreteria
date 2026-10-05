@@ -17,7 +17,7 @@
         stroke-linejoin="round"
       />
     </svg>
-    <h1>Fichaje Ferretería</h1>
+    <h1>Jornada</h1>
     <p class="caption">Controla tus 8 h al día y 40 h a la semana, ni más ni menos.</p>
   </div>
 
