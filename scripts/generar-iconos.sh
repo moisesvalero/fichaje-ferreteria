@@ -36,6 +36,22 @@ icono_svg() {
 SVG
 }
 
+# Icono maskable. Android y las PWA recortan el icono con su propia forma y solo
+# garantizan el 80% central, así que el reloj va más pequeño que en el normal y
+# con el fondo a sangre (nada de esquinas redondeadas ni transparencias).
+maskable_svg() {
+  local w=$1 h=$2 cx cy r g
+  cx=$((w / 2)); cy=$((h / 2))
+  r=$((w * 22 / 100)); g=$((w * 5 / 100))
+  cat <<SVG
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 $w $h" width="$w" height="$h">
+  <rect width="$w" height="$h" fill="$AZUL" />
+  <circle cx="$cx" cy="$cy" r="$r" fill="none" stroke="#FFFFFF" stroke-width="$g" />
+  <path d="M$cx $((cy - r * 62 / 100))v$((r * 78 / 100))l$((r * 55 / 100)) $((r * 34 / 100))" fill="none" stroke="#FFFFFF" stroke-width="$g" stroke-linecap="round" stroke-linejoin="round" />
+</svg>
+SVG
+}
+
 # Pantalla de arranque: el mismo icono centrado sobre el lienzo de la app.
 # Se dibuja en un cuadrado del lado mayor y se recorta al centro, porque
 # qlmanage escala el SVG para cubrir el lienzo, no para encajarlo.
@@ -79,7 +95,7 @@ echo "Iconos…"
 for lado in 180 192 512; do
   rasterizar "$(icono_svg 1024 1024)" "public/icono-$lado.png" 1024 "" "${lado}x${lado}"
 done
-cp public/icono-512.png public/icono-maskable-512.png
+rasterizar "$(maskable_svg 1024 1024)" "public/icono-maskable-512.png" 1024 "" "512x512"
 
 echo "Pantallas de arranque…"
 mkdir -p public/splash
