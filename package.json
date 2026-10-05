@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "PWA para controlar tus horas de trabajo: 8 h al día y 40 a la semana. Con tu cuenta, para que perder el móvil no sea perder el historial.",
+  "description": "PWA para controlar tus horas de trabajo: 8 h al d\u00eda y 40 a la semana. Con tu cuenta, para que perder el m\u00f3vil no sea perder el historial.",
   "keywords": [
     "pwa",
     "fichaje",
@@ -13,7 +13,7 @@
     "cloud"
   ],
   "license": "MIT",
-  "author": "Moisés Valero",
+  "author": "Mois\u00e9s Valero",
   "repository": {
     "type": "git",
     "url": "https://github.com/moisesvalero/jornada.git"
@@ -32,7 +32,7 @@
     "lint": "oxlint src",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verificar": "pnpm lint && pnpm check && pnpm test && pnpm build"
+    "verificar": "pnpm lint && pnpm check && pnpm test && pnpm format:check && pnpm build"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
