@@ -32,7 +32,7 @@ Empezaba a trabajar en una ferretería y quería controlar que hacía mis **8 h 
 | **Sin router**                    | SvelteKit, svelte-spa-router | Cinco pestañas y una hoja modal no justifican una dependencia de enrutado                              |
 | **PDF diferido**                  | Importar jsPDF arriba        | jsPDF arrastra `html2canvas` y `dompurify`: 200 kB que no deben cargarse para ver un reloj             |
 | **CSS propio con tokens**         | Tailwind                     | Seis pantallas con una jerarquía muy marcada: las variables CSS dan control exacto y cero dependencias |
-| **Reglas en un módulo puro**      | Lógica en los componentes    | El motor de cálculo es lo único que puede mentir; aislado y con 101 tests, es verificable              |
+| **Reglas en un módulo puro**      | Lógica en los componentes    | El motor de cálculo es lo único que puede mentir; aislado y con 112 tests, es verificable              |
 | **`fake-indexeddb` en los tests** | Probar solo lo puro          | La cola de escritura y el candado de reentrada del botón de fichar son donde estaban los bugs reales   |
 
 ## Lo que queda fuera de alcance (a propósito)

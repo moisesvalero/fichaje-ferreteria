@@ -208,7 +208,7 @@
   }
 
   .exceso {
-    color: var(--azul);
+    color: var(--tinta);
   }
 
   .seccion h2 {

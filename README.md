@@ -8,7 +8,7 @@ Sin cuentas, sin nube, sin backend. Todo el historial vive en tu dispositivo.
 
 [![CI](https://github.com/moisesvalero/fichaje-ferreteria/actions/workflows/ci.yml/badge.svg)](https://github.com/moisesvalero/fichaje-ferreteria/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2563EB.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-101%20passing-15803D.svg)](src/lib)
+[![Tests](https://img.shields.io/badge/tests-112%20passing-15803D.svg)](src/lib)
 [![Svelte 5](https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white)](https://svelte.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev)
@@ -106,7 +106,7 @@ src/
 
 | Comprobación         | Resultado                                       |
 | -------------------- | ----------------------------------------------- |
-| Tests                | **101** en 4 ficheros                           |
+| Tests                | **112** en 4 ficheros                           |
 | `pnpm check`         | 0 errores, 0 avisos                             |
 | `pnpm lint` (oxlint) | 0 avisos                                        |
 | `pnpm build`         | OK, service worker con 18 recursos precacheados |
@@ -123,6 +123,8 @@ El proyecto pasó por una **revisión adversarial** antes de publicarse, y la pr
 Además: los tramos solapados contaban doble, el CSV y el PDF podían discrepar en un minuto, `horas/semana` no lo usaba nadie (el control no hacía nada) y una hora inválida en el editor se convertía en un tramo abierto en silencio.
 
 **Dos de los tests de regresión están verificados desactivando el arreglo**: fallan sin él. Un test que no puede fallar no vale nada.
+
+Una **segunda pasada** encontró un crítico más de la misma familia y tres importantes, ya corregidos: un backup con dos tramos que compartieran identificador hacía que Svelte lanzara al renderizar y dejaba la app sin arrancar (los ids repetidos se renombran); un `inicio: 0` de 1970 entraba sin una queja y sumaba 29 millones de minutos al saldo (los instantes se acotan al día de su jornada y a 24 h de duración); la importación anunciaba «Copia restaurada» a la vez que mostraba el fallo de la transacción; y cambiar el límite semanal reescribía hacia atrás el saldo ya apuntado, cosa que ahora no ocurre porque **el objetivo de cada semana se congela al cerrarse**.
 
 ## Rendimiento
 
