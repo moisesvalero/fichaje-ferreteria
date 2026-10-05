@@ -1,0 +1,54 @@
+{
+  "project": "4562017147504546864",
+  "designSystem": "3795313200068201258",
+  "screens": {
+    "Inicio": {
+      "id": "3b912d0e2c574815805edc41c9cd61f6",
+      "canvas": "https://stitch.google.com/projects/4562017147504546864?node-id=3b912d0e2c574815805edc41c9cd61f6",
+      "image": "https://lh3.googleusercontent.com/aida/AEtjO1X81vdSFokDNW1Gdwf_N35tH9vu5LgysomDHnq_fs97SfZX00msrhI874czlsSof7egyrX-ck_FHD0-zRylnhHy82QtdhV3aMY1xHrW-lQswAcd3GCV8meB4H_Lh_USLsY1cStdjgP0TnDpDnKkWaHnUyyHxbWBLc-idS9J4uPkKxkJC16q0cgMptQyUiDDmYUdjX8KVfdLJdvVJVmidtNemQtoTz83ydmresvt1flyEdJy9LLn7Y27pg",
+      "html": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ7Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpaCiVodG1sXzcyYTI1N2RmNDM5NTQwZjA5MGE5ODVkMzk5MzlkOTQ0EgsSBxCnucSU1xcYAZIBIwoKcHJvamVjdF9pZBIVQhM0NTYyMDE3MTQ3NTA0NTQ2ODY0&filename=&opi=96797242",
+      "device": "MOBILE",
+      "dsApplied": true
+    },
+    "Semana": {
+      "id": "eda81d848d3c4485825eef6811dc1598",
+      "canvas": "https://stitch.google.com/projects/4562017147504546864?node-id=eda81d848d3c4485825eef6811dc1598",
+      "image": "https://lh3.googleusercontent.com/aida/AEtjO1WbR9d9updE4-WbZOOoedl8HgSmBi-dYw-SG8mHNQqRX4yStmbYvlhZYKOQzKckG25Vo2fszBGWubGti1YTeJxJ-CnSYDr_ctfJE3U7U0CLqbQfYBDouK8lgTMlVxLIskHE1x5NAspof45ImezsHFyTfofuQMAykH8t2OfJkC1jLOrP8uhvXH_o8z1yRunvNqWHl6SYFxLYm8Kb-ipvBRhlsNjBaTkSV8nK9tRrA-ve5Y-jB3lSdpd2Y1U",
+      "html": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ7Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpaCiVodG1sXzIzZmJmNzUxYThlZDQ3YjM5MjBjMjVkMzlhN2YxNzYzEgsSBxCnucSU1xcYAZIBIwoKcHJvamVjdF9pZBIVQhM0NTYyMDE3MTQ3NTA0NTQ2ODY0&filename=&opi=96797242",
+      "device": "MOBILE",
+      "dsApplied": true
+    },
+    "Historial": {
+      "id": "6be6fdfe3a6f47ae9a34e54d4b681dad",
+      "canvas": "https://stitch.google.com/projects/4562017147504546864?node-id=6be6fdfe3a6f47ae9a34e54d4b681dad",
+      "image": "https://lh3.googleusercontent.com/aida/AEtjO1WNoadveketWMJpQ3iyI7sHn_OfigDensowi7N6B5WkSn822mKRcdkg2zA7eAJhT2_h0I2ijsnI25ckJrfW4tUXoVzWTdDtorr3MyzemyQ78gYfvCWLnfD9_aQD5YUnnd6XqCnAeIIhNwCMoIK3YTmh6RzWYX28_UmRgVhBrn6lhIKOtUMJMhbublsjRRVVuiQoz493UXkve5h_IYGxg5bMhvE2lccxir30cLZX_yzMLF6BpMqejjdkPg",
+      "html": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ7Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpaCiVodG1sXzhlYTYwMDZiNjRkNTRiNzJiMWUzOTc5ZGM3ZGU1NmZkEgsSBxCnucSU1xcYAZIBIwoKcHJvamVjdF9pZBIVQhM0NTYyMDE3MTQ3NTA0NTQ2ODY0&filename=&opi=96797242",
+      "device": "MOBILE",
+      "dsApplied": true
+    },
+    "Editar jornada": {
+      "id": "51bf2197b2fd42988a6fcb352d6236fc",
+      "canvas": "https://stitch.google.com/projects/4562017147504546864?node-id=51bf2197b2fd42988a6fcb352d6236fc",
+      "image": "https://lh3.googleusercontent.com/aida/AEtjO1WUQIDu5UWp35pQLl-_lxGHwQHP4uBI7gYAotqLG464erZSGUQUTvUQ52Vip_aJhzYmEYjq6Axfb_nVAWJOUD9nAdxJ7leDk-VV_qXuBDUEW-W406KaTtB447ZP21UNaM0mn0thF-3jZ0z8uVGQT8tID3Ro6dScoQFraeDcB2Hysn1OlpfN55G1_HOueeYQCREPO-M0hmVPfhTlpY2axdBDdFFuEdHKFRT0-Ga71-nPPnb59qgCJog6NPU",
+      "html": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ7Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpaCiVodG1sX2MyNTJhY2U5YzJlOTQ0YjI5MzY2ODUyZTQ1NTdhMTdiEgsSBxCnucSU1xcYAZIBIwoKcHJvamVjdF9pZBIVQhM0NTYyMDE3MTQ3NTA0NTQ2ODY0&filename=&opi=96797242",
+      "device": "MOBILE",
+      "dsApplied": true
+    },
+    "Ajustes": {
+      "id": "039bebfe715941d5abc61832c55a8c3f",
+      "canvas": "https://stitch.google.com/projects/4562017147504546864?node-id=039bebfe715941d5abc61832c55a8c3f",
+      "image": "https://lh3.googleusercontent.com/aida/AEtjO1UNY6DOr-gO6C1rpiumPUkopjZLRb-98LWPF7D_ONy6FWGy5-9iVRz85PQZfzut75CKR7tGycA1xwTI7SYf2wRWqE-AKxHs5sqkep2N6kI1q_9akFjE3wx8U_mJ8-namf83l1qcrn6G4T5_upz1lHabi6zfuRYLQ4fUcYpTBlePzsbUTmMc7kRnECepsPLkIPg3QGHm2XyOAhIky-thUcsFD1xQpyPm8pesDpKbsVxN9uz-BtUMeQ0k1pw",
+      "html": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ7Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpaCiVodG1sXzBlNGY4YmFhMTNlODRlMTU4OTI3ZmYzM2ZiZGM3NWI0EgsSBxCnucSU1xcYAZIBIwoKcHJvamVjdF9pZBIVQhM0NTYyMDE3MTQ3NTA0NTQ2ODY0&filename=&opi=96797242",
+      "device": "MOBILE",
+      "dsApplied": true
+    },
+    "Exportar": {
+      "id": "ab9cb157799e49d29066e6e0973c22f3",
+      "canvas": "https://stitch.google.com/projects/4562017147504546864?node-id=ab9cb157799e49d29066e6e0973c22f3",
+      "image": "https://lh3.googleusercontent.com/aida/AEtjO1UCR305H88XOpwqga9hqRUNCmEkoM-H8EEezQ_POvi5AVV6V_u5JfEYNmzVME3c0G0O2aF8_umBZziqo0xiQM6k3CJqAgKS31tU_qY_1qwmRRZ3C0uctOMcSBVe7_dldEGA88rDFNaSBtPQDYCbXMVbjGkm2iuRBSyJZ8OMRCG0BK_i0nrTbk1UMrakm9BJzINcWIGiGf9nZUNb1S-wO3wKGSNb3k6dXJVLM7awKbDN2z-_xZBROIByCPc",
+      "html": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ7Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpaCiVodG1sXzE4Njc4YTdmMzQ5ODRmMmQ4NjllNWQ5NGNlZDM2NzVhEgsSBxCnucSU1xcYAZIBIwoKcHJvamVjdF9pZBIVQhM0NTYyMDE3MTQ3NTA0NTQ2ODY0&filename=&opi=96797242",
+      "device": "MOBILE",
+      "dsApplied": true
+    }
+  }
+}
