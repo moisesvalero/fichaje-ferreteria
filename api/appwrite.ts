@@ -63,7 +63,15 @@ export default async function handler(peticion: Request): Promise<Response> {
   if (galletas.length > 0) {
     salida.delete('set-cookie');
     for (const galleta of galletas) {
-      salida.append('set-cookie', galleta.replace(/;\s*domain=[^;]*/gi, ''));
+      // Solo se reubica la cookie de SESIÓN, que Appwrite marca con su dominio y
+      // que el navegador rechazaría para el nuestro. Las demás se dejan tal cual:
+      // las que no llevan `domain=` se guardan en el host que responde, y por eso
+      // el inicio del login no pasa por aquí (ver `abrirLoginConGoogle`).
+      const esDeSesion = (galleta: string) => /^\s*a_session_/i.test(galleta);
+      salida.append(
+        'set-cookie',
+        esDeSesion(galleta) ? galleta.replace(/;\s*domain=[^;]*/gi, '') : galleta,
+      );
     }
   }
 

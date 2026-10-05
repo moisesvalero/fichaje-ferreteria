@@ -11,7 +11,7 @@
  * no lleve incrustado el proyecto de nadie: quien clone esto pone el suyo.
  */
 
-import { Account, Client, Databases } from 'appwrite';
+import { Account, Client, Databases, OAuthProvider } from 'appwrite';
 
 /**
  * Las llamadas a Appwrite salen por **nuestro propio dominio**, con un proxy
@@ -38,6 +38,9 @@ export const COLECCION_AJUSTES =
 /** `true` si la app está configurada; si no, se muestra un aviso claro. */
 export const configurado = Boolean(ENDPOINT && PROJECT);
 
+/** Endpoint de Appwrite sin pasar por el proxy. Ver `abrirLoginConGoogle`. */
+export const ENDPOINT_DIRECTO = 'https://fra.cloud.appwrite.io/v1';
+
 export const client = new Client();
 
 if (configurado) {
@@ -55,4 +58,27 @@ export const idBaseDatos = DATABASE;
 export function esSesionCaducada(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) return false;
   return (error as { code?: number }).code === 401;
+}
+
+/**
+ * Lanza el login con Google **directamente contra Appwrite**, sin el proxy.
+ *
+ * Es la única llamada que no puede pasar por nuestro dominio, y el motivo es una
+ * cookie: al empezar el login, Appwrite deja `a_oauth2_<proyecto>` con el estado
+ * de la operación, y esa cookie **no lleva `domain=`**, así que el navegador la
+ * asigna al host que responde. Si la petición sale por el proxy, la cookie se
+ * queda en nuestro dominio; la vuelta desde Google llega a Appwrite, que no la
+ * recibe, no puede validar el estado y manda al usuario al aviso de fallo.
+ *
+ * El resto de llamadas sí van por el proxy, que es lo que hace que la cookie de
+ * sesión sea de primera parte.
+ */
+export function abrirLoginConGoogle(exito: string, fallo: string): void {
+  const anterior = client.config.endpoint;
+  client.setEndpoint(ENDPOINT_DIRECTO);
+  try {
+    account.createOAuth2Token(OAuthProvider.Google, exito, fallo);
+  } finally {
+    client.setEndpoint(anterior);
+  }
 }

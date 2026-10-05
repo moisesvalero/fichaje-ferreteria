@@ -24,14 +24,19 @@ export default defineConfig({
               }) => void,
             ) => void;
           };
+          // Solo la cookie de SESIÓN se reubica en nuestro dominio. Las demás
+          // (sobre todo `a_oauth2_<proyecto>`, que guarda el estado del login)
+          // tienen que seguir siendo de Appwrite, porque la vuelta desde Google
+          // llega a su dominio y ahí se validan.
+          const esDeSesion = (galleta: string) => /^\s*a_session_/i.test(galleta);
           servidor.on('proxyRes', (respuesta) => {
             const galletas = respuesta.headers['set-cookie'];
+            const reubicar = (galleta: string) =>
+              esDeSesion(galleta) ? galleta.replace(/;\s*domain=[^;]*/gi, '') : galleta;
             if (typeof galletas === 'string') {
-              respuesta.headers['set-cookie'] = galletas.replace(/;\s*domain=[^;]*/gi, '');
+              respuesta.headers['set-cookie'] = reubicar(galletas);
             } else if (Array.isArray(galletas)) {
-              respuesta.headers['set-cookie'] = galletas.map((galleta) =>
-                galleta.replace(/;\s*domain=[^;]*/gi, ''),
-              );
+              respuesta.headers['set-cookie'] = galletas.map(reubicar);
             }
           });
         },

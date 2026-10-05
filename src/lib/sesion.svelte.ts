@@ -8,22 +8,7 @@
  * instalada en iOS.
  */
 
-import { OAuthProvider } from 'appwrite';
-
-import { account, configurado } from './appwrite';
-
-/**
- * `createOAuth2Token` figura como obsoleta en el SDK, pero es el flujo que
- * permite canjear el token por una sesión desde nuestro propio dominio.
- * `createOAuth2Session` deja que Appwrite ponga la cookie en una redirección
- * suya, y esa cookie es de terceros: Safari y Chrome la bloquean y el login
- * vuelve siempre al mismo botón.
- */
-const pedirToken = account.createOAuth2Token.bind(account) as (
-  proveedor: OAuthProvider,
-  exito: string,
-  fallo: string,
-) => void;
+import { abrirLoginConGoogle, account, configurado } from './appwrite';
 
 export interface Usuario {
   id: string;
@@ -104,8 +89,8 @@ class EstadoSesion {
     this.entrando = true;
     this.error = null;
     try {
-      pedirToken(
-        OAuthProvider.Google,
+      // Va directo a Appwrite a propósito: ver `abrirLoginConGoogle`.
+      abrirLoginConGoogle(
         `${this.urlDeVuelta()}?acceso=ok`,
         `${this.urlDeVuelta()}?acceso=fallido`,
       );
