@@ -6,6 +6,7 @@
 
 Sin cuentas, sin nube, sin backend. Todo el historial vive en tu dispositivo.
 
+[![Demo](https://img.shields.io/badge/demo-fichaje--ferreteria.vercel.app-000000?logo=vercel&logoColor=white)](https://fichaje-ferreteria.vercel.app)
 [![CI](https://github.com/moisesvalero/fichaje-ferreteria/actions/workflows/ci.yml/badge.svg)](https://github.com/moisesvalero/fichaje-ferreteria/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2563EB.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-112%20passing-15803D.svg)](src/lib)
@@ -150,7 +151,11 @@ pnpm verificar      # lint + check + test + build, todo de una vez
 
 ## Despliegue
 
-Desplegado en **Vercel** con `vercel.json` (framework Vite, salida en `dist` y cabeceras de caché para el service worker). Al ser una app estática sin backend, cualquier hosting sirve.
+**En vivo: <https://fichaje-ferreteria.vercel.app>**
+
+Desplegado en **Vercel** con `vercel.json` (framework Vite, salida en `dist` y cabeceras de caché para el service worker). Cada push a `main` despliega solo. Al ser una app estática sin backend, cualquier hosting sirve.
+
+Para instalarla en el móvil: abre la URL en el navegador y usa «Añadir a pantalla de inicio». A partir de ahí funciona sin conexión.
 
 ## Privacidad
 
