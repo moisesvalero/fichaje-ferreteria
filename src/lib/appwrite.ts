@@ -13,7 +13,20 @@
 
 import { Account, Client, Databases } from 'appwrite';
 
-const ENDPOINT = import.meta.env.VITE_APPWRITE_ENDPOINT;
+/**
+ * Las llamadas a Appwrite salen por **nuestro propio dominio**, con un proxy
+ * (reescritura en Vercel y proxy en el servidor de desarrollo). No es un capricho:
+ * Appwrite guarda la sesión en una cookie de SU dominio, y para nuestra app esa
+ * cookie es de terceros, así que Safari y Chrome la bloquean y el login se queda
+ * en bucle: entras con Google y vuelves al botón. Pasando por nuestro dominio, la
+ * cookie se guarda como de primera parte y el login funciona.
+ *
+ * Si se define `VITE_APPWRITE_ENDPOINT` se respeta (útil para apuntar a otro
+ * proyecto), pero por defecto se usa el proxy del propio origen.
+ */
+const ENDPOINT =
+  import.meta.env.VITE_APPWRITE_ENDPOINT ||
+  (typeof window === 'undefined' ? '' : `${window.location.origin}/appwrite`);
 const PROJECT = import.meta.env.VITE_APPWRITE_PROJECT;
 const DATABASE = import.meta.env.VITE_APPWRITE_DATABASE ?? 'recetario';
 
