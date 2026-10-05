@@ -23,16 +23,18 @@ La disciplina cromática es deliberada: **el color escasea y por eso informa**. 
 
 - **Tinta (`#0F172A`)**: texto primario y cifras principales.
 - **Tinta Secundaria (`#475569`)**: etiquetas, subtítulos y texto de apoyo.
-- **Tinta Apagada (`#94A3B8`)**: notas al pie, texto deshabilitado, días de descanso.
+- **Tinta Apagada (`#556275`)**: etiquetas de pestañas inactivas, iconos de acción secundarios, días de descanso. Es más oscura que el apagado habitual a propósito: `#94A3B8` se quedaba en 2,56:1 sobre blanco, muy por debajo del mínimo AA.
 
 ### Functional States
 
 Solo se aplican a cifras clave y chips pequeños; siempre apagados, nunca fluorescentes. Cada estado lleva **texto explícito**, nunca solo color.
 
+**Contraste:** todo el texto cumple WCAG AA (4,5:1) y los elementos gráficos que transmiten información, 3:1. El zoom del navegador no se bloquea (WCAG 1.4.4).
+
 - **En objetivo — Verde (`#15803D` sobre `#F0FDF4`)**: vas en tus horas.
 - **Aviso — Ámbar (`#B45309` sobre `#FEF3C7`)**: te acercas al límite, o hay un olvido o una copia pendiente.
 - **Excedido — Rojo (`#B91C1C` sobre `#FEE2E2`)**: te has pasado.
-- **Neutro — Gris (`#64748B` sobre `#F1F5F9`)**: festivo, descanso, dato no computable.
+- **Neutro — Gris (`#556275` sobre `#F1F5F9`, 5,65:1)**: festivo, descanso, dato no computable.
 
 ## 3. Typography Rules
 
@@ -62,6 +64,7 @@ Nota de implementación: el design system declara `IBM Plex Sans` para etiquetas
 - **Campos de hora (editor)**: dos campos por tramo separados por un guion, con icono de reloj, cifras tabulares y radio `12px`.
 - **Barra de progreso**: altura `6px`, radio completo, pista en superficie hundida y relleno azul. Al desbordar el objetivo, el exceso se marca en rojo sobre el final de la barra.
 - **Barra de pestañas inferior**: cinco destinos fijos — Hoy, Semana, Historial, Exportar, Ajustes — con icono de línea y etiqueta, activo en azul. Respeta `env(safe-area-inset-bottom)`.
+- **Diálogo modal (editor)**: recibe el foco al abrirse, lo atrapa mientras está abierto y lo devuelve al cerrarse. Con el teclado, `Escape` cierra.
 
 ## 5. Layout Principles
 
@@ -71,6 +74,7 @@ Nota de implementación: el design system declara `IBM Plex Sans` para etiquetas
 - **Táctil**: mínimo `48x48px` para cualquier control; el botón principal, `88px`.
 - **Zona de pulgar**: las acciones frecuentes viven en el tercio inferior de la pantalla.
 - **Responsive**: diseño móvil primero y única fuente de verdad. En pantallas anchas el contenido se centra con ancho máximo de `480px`; no se diseña una disposición de escritorio distinta.
+- **Instalada en iOS**: modo `standalone` con `viewport-fit=cover`, área segura respetada arriba y abajo, sin rebote de fondo, sin destello al pulsar y con pantallas de arranque por dispositivo para que no aparezca un blanco al abrir.
 
 ## 6. Design System Notes for Stitch Generation
 

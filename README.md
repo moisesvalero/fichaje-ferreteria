@@ -127,6 +127,23 @@ Además: los tramos solapados contaban doble, el CSV y el PDF podían discrepar 
 
 Una **segunda pasada** encontró un crítico más de la misma familia y tres importantes, ya corregidos: un backup con dos tramos que compartieran identificador hacía que Svelte lanzara al renderizar y dejaba la app sin arrancar (los ids repetidos se renombran); un `inicio: 0` de 1970 entraba sin una queja y sumaba 29 millones de minutos al saldo (los instantes se acotan al día de su jornada y a 24 h de duración); la importación anunciaba «Copia restaurada» a la vez que mostraba el fallo de la transacción; y cambiar el límite semanal reescribía hacia atrás el saldo ya apuntado, cosa que ahora no ocurre porque **el objetivo de cada semana se congela al cerrarse**.
 
+## Accesibilidad y PWA en iOS
+
+**Accesibilidad**
+
+- Todo el texto cumple **WCAG AA** (4,5:1) y los elementos gráficos que informan, 3:1. Las pestañas inactivas estaban en 2,56:1 y se corrigieron.
+- El **zoom no está bloqueado** (WCAG 1.4.4).
+- Los estados **nunca se comunican solo con color**: cada chip y cada punto lleva su texto o su etiqueta accesible.
+- El diálogo del editor recibe el foco al abrirse, lo **atrapa** mientras está abierto y lo devuelve al cerrarse.
+
+**Instalada en iOS**
+
+- `standalone` con `viewport-fit=cover` y área segura respetada arriba y abajo.
+- **Sin rebote blanco** al tirar hacia abajo, sin destello al pulsar y sin retardo de doble toque.
+- **Pantallas de arranque para siete tamaños de iPhone**: iOS no las genera desde el manifest, así que sin ellas aparece un blanco al abrir. Se generan desde el mismo SVG del icono.
+- Iconos: **180** (iOS), **192** y **512**, más una variante **`maskable`** con el fondo a sangre para que ningún recorte deje un borde raro.
+- La actualización del service worker **no recarga la app sola**: avisa dentro y actualizas cuando te venga bien. Con recarga automática se podía perder una corrección a medias en el editor.
+
 ## Rendimiento
 
 | Métrica             | Valor                                    |

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
+  import { actualizacion } from './lib/actualizacion.svelte';
   import { app } from './lib/estado.svelte';
   import Ajustes from './pantallas/Ajustes.svelte';
   import Editor from './pantallas/Editor.svelte';
@@ -97,6 +98,19 @@
   </header>
 
   <main class="contenido">
+    {#if actualizacion.disponible}
+      <div class="aviso aviso--info aviso--descartable" role="status">
+        <span>Hay una versión nueva lista.</span>
+        <button
+          type="button"
+          onclick={() => void actualizacion.aplicar()}
+          disabled={actualizacion.aplicando}
+        >
+          {actualizacion.aplicando ? 'Actualizando…' : 'Actualizar'}
+        </button>
+      </div>
+    {/if}
+
     {#if app.error}
       <div class="aviso aviso--atencion aviso--descartable" role="alert">
         <span>{app.error}</span>

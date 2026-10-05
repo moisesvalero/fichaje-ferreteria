@@ -2,24 +2,71 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0"
-    />
+    <!-- Sin maximum-scale: bloquear el zoom incumple WCAG 1.4.4 y molesta a quien necesita ampliar. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#2563EB" />
     <meta
       name="description"
       content="Control personal de tus horas de trabajo, sin cuentas ni nube."
     />
+
+    <!-- PWA en iOS: nombre bajo el icono, modo aplicación y barra de estado clara. -->
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Fichaje" />
+    <meta name="format-detection" content="telephone=no" />
+
     <link rel="icon" type="image/svg+xml" href="/icono.svg" />
-    <link rel="apple-touch-icon" href="/icono-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icono-180.png" />
+
+    <!--
+      Pantallas de arranque. iOS no las genera a partir del manifest: sin esto
+      muestra un destello blanco al abrir la app instalada. Cada dispositivo
+      coge la suya por su consulta de medios.
+    -->
+    <link
+      rel="apple-touch-startup-image"
+      href="/splash/1290x2796.png"
+      media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="/splash/1179x2556.png"
+      media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="/splash/1170x2532.png"
+      media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="/splash/1284x2778.png"
+      media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="/splash/1242x2688.png"
+      media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="/splash/828x1792.png"
+      media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="/splash/1125x2436.png"
+      media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)"
+    />
+
     <title>Fichaje Ferretería</title>
   </head>
   <body>
     <div id="app"></div>
+    <noscript>Esta aplicación necesita JavaScript activado para funcionar.</noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

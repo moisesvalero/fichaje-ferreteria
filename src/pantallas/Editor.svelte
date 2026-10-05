@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onDestroy, onMount } from 'svelte';
+
   import { minutosJornada, minutosObjetivoDia } from '../lib/calculo';
   import { app } from '../lib/estado.svelte';
   import {
@@ -36,6 +38,10 @@
   );
   let tipo = $state<TipoDia>(existente?.tipo ?? 'laborable');
   let nota = $state(existente?.nota ?? '');
+  /** `true` en cuanto el usuario toca algo: hay cambios sin guardar. */
+  let tocado = $state(false);
+  let hoja: HTMLDivElement | undefined = $state();
+  let focoAnterior: HTMLElement | null = null;
 
   interface FilaCalculada extends Fila {
     inicio: number | null;
@@ -120,10 +126,12 @@
     const desde = ultimo?.hasta !== undefined && ultimo.hasta !== '' ? ultimo.hasta : '09:00';
     const reloj = partesDeHora(desde) ?? { hora: 9, minuto: 0, segundo: 0 };
     const fin = `${String(Math.min(23, reloj.hora + 4)).padStart(2, '0')}:${String(reloj.minuto).padStart(2, '0')}`;
+    tocado = true;
     filas = [...filas, { id: crypto.randomUUID(), desde, hasta: fin }];
   }
 
   function quitarTramo(id: string): void {
+    tocado = true;
     filas = filas.filter((f) => f.id !== id);
   }
 
@@ -137,15 +145,76 @@
     oncerrar();
   }
 
-  function alPulsarTecla(evento: KeyboardEvent): void {
-    if (evento.key === 'Escape') oncerrar();
+  const FOCALIZABLES =
+    'button:not([disabled]), input:not([disabled]), [href], select, textarea, [tabindex]:not([tabindex="-1"])';
+
+  /** Devuelve los elementos con los que se puede tabular dentro de la hoja. */
+  function focosables(): HTMLElement[] {
+    if (hoja === undefined) return [];
+    return [...hoja.querySelectorAll<HTMLElement>(FOCALIZABLES)].filter(
+      (elemento) => elemento.offsetParent !== null,
+    );
   }
+
+  function alPulsarTecla(evento: KeyboardEvent): void {
+    if (evento.key === 'Escape') {
+      oncerrar();
+      return;
+    }
+    if (evento.key !== 'Tab') return;
+
+    // Trampa de foco: sin esto se tabula fuera del diálogo y se navega por la
+    // pantalla que hay detrás, que está oculta.
+    const elementos = focosables();
+    if (elementos.length === 0) return;
+
+    const primero = elementos[0]!;
+    const ultimo = elementos[elementos.length - 1]!;
+    const activo = document.activeElement;
+
+    if (evento.shiftKey && (activo === primero || activo === hoja)) {
+      evento.preventDefault();
+      ultimo.focus();
+    } else if (!evento.shiftKey && activo === ultimo) {
+      evento.preventDefault();
+      primero.focus();
+    }
+  }
+
+  onMount(() => {
+    focoAnterior = document.activeElement as HTMLElement | null;
+    // Foco inicial en el primer campo, no en el botón de cerrar.
+    const primero = hoja?.querySelector<HTMLElement>('input, button');
+    primero?.focus();
+  });
+
+  onDestroy(() => {
+    // Al cerrar se devuelve el foco a donde estaba.
+    focoAnterior?.focus?.();
+  });
+
+  // Si hay cambios sin guardar, el navegador avisa antes de cerrar o recargar.
+  $effect(() => {
+    if (!tocado) return;
+    const avisar = (evento: BeforeUnloadEvent) => {
+      evento.preventDefault();
+      evento.returnValue = '';
+    };
+    window.addEventListener('beforeunload', avisar);
+    return () => window.removeEventListener('beforeunload', avisar);
+  });
 </script>
 
 <svelte:window onkeydown={alPulsarTecla} />
 
-<div class="fondo" role="presentation">
-  <div class="hoja" role="dialog" aria-modal="true" aria-labelledby="titulo-editor">
+<div class="fondo">
+  <div
+    class="hoja"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="titulo-editor"
+    bind:this={hoja}
+  >
     <header class="hoja__cabecera">
       <button class="texto-boton" type="button" onclick={oncerrar}>Cancelar</button>
       <h2 id="titulo-editor">Editar jornada</h2>
@@ -184,6 +253,7 @@
               <input
                 type="time"
                 bind:value={fila.desde}
+                oninput={() => (tocado = true)}
                 aria-invalid={error !== null}
                 aria-describedby={error === null ? undefined : `error-${fila.id}`}
               />
@@ -194,6 +264,7 @@
               <input
                 type="time"
                 bind:value={fila.hasta}
+                oninput={() => (tocado = true)}
                 aria-invalid={error !== null}
                 aria-describedby={error === null ? undefined : `error-${fila.id}`}
               />
@@ -261,7 +332,10 @@
               class="tipo"
               class:tipo--activo={tipo === opcion.valor}
               aria-pressed={tipo === opcion.valor}
-              onclick={() => (tipo = opcion.valor)}
+              onclick={() => {
+                tocado = true;
+                tipo = opcion.valor;
+              }}
             >
               {opcion.etiqueta}
             </button>

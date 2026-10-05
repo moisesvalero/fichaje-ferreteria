@@ -18,7 +18,7 @@
   /* Texto */
   --tinta: #0f172a;
   --tinta-secundaria: #475569;
-  --tinta-apagada: #94a3b8;
+  --tinta-apagada: #556275;
 
   /* Estados */
   --verde: #15803d;
@@ -27,7 +27,7 @@
   --ambar-fondo: #fef3c7;
   --rojo: #b91c1c;
   --rojo-fondo: #fee2e2;
-  --neutro: #64748b;
+  --neutro: #556275;
   --neutro-fondo: #f1f5f9;
 
   /* Formas */
@@ -60,6 +60,23 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-size-adjust: 100%;
+}
+
+/*
+ * En una PWA instalada el rebote de iOS deja ver el fondo del documento: si no
+ * está pintado, aparece una franja blanca al tirar hacia abajo.
+ */
+html {
+  height: 100%;
+  overscroll-behavior: none;
+  background: var(--lienzo);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+body {
+  min-height: 100%;
+  overscroll-behavior-y: none;
 }
 
 /* Las cifras nunca bailan: ancho fijo por dígito. */
@@ -176,6 +193,8 @@ body {
 /* ---------- Botones ---------- */
 
 .boton {
+  touch-action: manipulation;
+  user-select: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -363,6 +382,9 @@ body {
 }
 
 .pestanas button {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
   flex: 1;
   display: flex;
   flex-direction: column;
